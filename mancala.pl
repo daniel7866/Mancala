@@ -92,9 +92,10 @@ move(Pos,BoardSide):-
   dir(Pos,BoardSide,NextPos,NextBoardSide),%get the next pocket
   move(NextPos,NextBoardSide,NumOfStones).%put one stone in each of the next pockets
 
-move(Pos,_,0):-%when we are out of stones - we stop
-  Pos = bank;
+move(_,_,0):-%when we are out of stones - we stop
   switchTurns.
+move(bank,BoardSide,1):-%when the last stone is in the bank - we get another turn
+  putInPocket(bank,BoardSide,1).
 move(Pos,BoardSide,NumOfStones):-
   putInPocket(Pos,BoardSide,1),%put one in current pocket
   CurrNumOfStones is NumOfStones-1,
