@@ -96,6 +96,10 @@ move(_,_,0):-%when we are out of stones - we stop
   switchTurns.
 move(bank,BoardSide,1):-%when the last stone is in the bank - we get another turn
   putInPocket(bank,BoardSide,1).
+move(Pos,BoardSide,1):-
+  (captured(Pos,BoardSide);
+  putInPocket(Pos,BoardSide,1)),
+  switchTurns.
 move(Pos,BoardSide,NumOfStones):-
   putInPocket(Pos,BoardSide,1),%put one in current pocket
   CurrNumOfStones is NumOfStones-1,
@@ -138,3 +142,23 @@ gameEnded1:-%check if a row is empty - collect the other
 gameEnded1:-%check if a row is empty - collect the other
   isEmptyRow(cpu),
   collectRow(human).
+
+captured(Pos,human):-
+  isEmptyPocket(Pos,human),
+  turn(human),
+  not(isEmptyPocket(Pos,cpu)),
+  emptyCurrPocket(Pos,cpu,CpuNumOfStones),
+  pocket(bank,human,BankNumOfStones),
+  retract(pocket(bank,human,BankNumOfStones)),
+  UpBankNumOfStones is BankNumOfStones + CpuNumOfStones + 1,
+  assert(pocket(bank,human,UpBankNumOfStones)).
+
+captured(Pos,cpu):-
+  isEmptyPocket(Pos,cpu),
+  turn(cpu),
+  not(isEmptyPocket(Pos,human)),
+  emptyCurrPocket(Pos,human,HumanNumOfStones),
+  pocket(bank,cpu,BankNumOfStones),
+  retract(pocket(bank,cpu,BankNumOfStones)),
+  UpBankNumOfStones is BankNumOfStones + HumanNumOfStones + 1,
+  assert(pocket(bank,cpu,UpBankNumOfStones)).
