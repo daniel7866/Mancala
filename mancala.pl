@@ -1,124 +1,246 @@
-%pocket(pos, player, stones count)
-%turn(player) = who can play now
-:- dynamic pocket/3.
-:- dynamic turn/1.
-:- dynamic winner/1.
+% ---------------------------------------------------------------------
+%              20596 - Prolog & Artificial Intelligence
+%                      Maman 17 - Final Project
+% ---------------------------------------------------------------------
+% Programmers:
+%   Name: Daniel Fogel
+%   ID: 208778654
+%   Name: Hila Deri
+%   ID: 301785861
+% ---------------------------------------------------------------------
+% File Name: Mancala.pl
+% ---------------------------------------------------------------------
+% Description:
+% Mancala 2X8 board game application against the computer, implemented
+% with AlphaBeta search algorithm.
+% ---------------------------------------------------------------------
+% Synopsis:
+%
+% ---------------------------------------------------------------------
 
+% ---------------------------------------------------------------------
+% internally used dynamic predicates & data structures:
+% ---------------------------------------------------------------------
+:- dynamic pocket/3. % pocket(pos, player, stones count) - represents a
+% specific pocekt in the board game.
+:- dynamic turn/1. % turn(player) - represents who can play now.
+:- dynamic winner/1. % winner (player) - represents the game's winner.
 
+% ---------------------------------------------------------------------
+% memory cleaning of dynamic predicates:
+% ---------------------------------------------------------------------
 cleanUp:-
-  retractall(pocket(_,_,_)),
-  retractall(turn(_)),
-  retractall(winner(_)).
+  retractall(pocket(_,_,_)), % cleans pocket(pos, player, stones count)
+  retractall(turn(_)), % cleans turn(player)
+  retractall(winner(_)). % cleans winner(player)
+
+% ---------------------------------------------------------------------
+% initializing the board game:
+% ---------------------------------------------------------------------
+% starts with initializing 5 pockets for each player
+% then initializing the banks for both players.
 start:-
   start(5),
   assert(pocket(bank,human,0)),
   assert(pocket(bank,cpu,0)),
-  assert(turn(human)).%human starts first
+  assert(turn(human)). % human starts first
 
-start(-1).
+% initializing the 5 pockets of each player in the board:
+start(-1). % stop after 5 pockets for each player
 start(Pos):-
-  assert(pocket(Pos,human,4)),%game starts with 4 stones in each pocket
-  assert(pocket(Pos,cpu,4)),
+  assert(pocket(Pos,human,4)), % game starts with 4 stones
+  assert(pocket(Pos,cpu,4)), % in each pocket for each player
   NextPos is Pos-1,
-  start(NextPos).
+  start(NextPos). % recursivly updating the next pocket
 
+% ---------------------------------------------------------------------
+% checking if a specific pocket is empty:
+% ---------------------------------------------------------------------
+isEmptyPocket(Pos,BoardSide):-
+  pocket(Pos,BoardSide,0).
+
+% ---------------------------------------------------------------------
+% checking if a specific row is empty(the entire row):
+% ---------------------------------------------------------------------
+% BoardSide is the player side of the board :
+% we check if this entire row is empty
 isEmptyRow(BoardSide):-
-  isEmptyRow(5,BoardSide).
+  isEmptyRow(5,BoardSide). % there are 6 pockets( 0 - 5 )
 
-isEmptyRow(-1,_).
+% overloading:
+isEmptyRow(-1,_). % break the recursion - we are done with the entire row
+
 isEmptyRow(Pos,BoardSide):-
-  pocket(Pos,BoardSide,0),
+  pocket(Pos,BoardSide,0), % pocket(Pos,BoardSide, 0 stones = empty)
   NextPos is Pos-1,
-  isEmptyRow(NextPos,BoardSide).
+  isEmptyRow(NextPos,BoardSide). % recursion
 
-%put a stone in the pocket
+% ---------------------------------------------------------------------
+% put chosen number of stones in a specific pocket:
+% check how many stones in the pockets
+% retract the pocket and assert it again with new number of stones
+% ---------------------------------------------------------------------
 putInPocket(Pos,BoardSide,NumOfStonesToPut):-
   pocket(Pos,BoardSide,NumOfStones),
   UpNumOfStones is NumOfStones+NumOfStonesToPut,
   retract(pocket(Pos,BoardSide,NumOfStones)),
   assert(pocket(Pos,BoardSide,UpNumOfStones)).
 
-%empty this pocket - take out all of it's rocks
+% ---------------------------------------------------------------------
+% empty this pocket - take out all of it's stones:
+% check how many stones in the pockets
+% retract the pocket and assert it again with new number of stones (0)
+% ---------------------------------------------------------------------
 emptyCurrPocket(Pos,BoardSide,NumOfStones):-
   pocket(Pos,BoardSide,NumOfStones),
   retract(pocket(Pos,BoardSide,NumOfStones)),
   assert(pocket(Pos,BoardSide,0)).
 
-%dir gets current position and brings the next position
+% ---------------------------------------------------------------------
+% (dir recalls direction):
+% dir gets current pocket and brings the next pocket.
+% dir is written twice and seperated between the human side of the board
+% and the cpu side of the board
+% the direction is counter clockwise
+% the cpu is in the upper row and the human in the bottom row
+% cpu goes: 5->4->3->2->1->0
+% human goes: 0->1->2->3->4->5
+% ---------------------------------------------------------------------
+/*************** human side of the board***************/
 dir(CurrPos,human,NextPos,BoardSide):-
-  integer(CurrPos),
+  integer(CurrPos), % position can be a bank - not an integer
   CurrPos<5,
-  BoardSide = human,
+  BoardSide = human, % if we are less than 5 we stay on current BoardSide
   NextPos is CurrPos+1.
-dir(5,human,bank,human):-% player is human
+
+dir(5,human,bank,human):- % player is human-we go to the human's bank
   turn(human).
-dir(bank,human,5,cpu):-% player is human
-  turn(human).
-dir(5,human,5,cpu):-% player is cpu
+
+dir(bank,human,5,cpu):- % player is human and we are in his bank -
+  turn(human). % we go counter clockwise to the cpu's row - start at pocket 5
+
+dir(5,human,5,cpu):- % player is cpu - we skip the human's bank
   turn(cpu).
 
-%dir gets current position and brings the next position
+/*************** cpu side of the board ***************/
 dir(CurrPos,cpu,NextPos,BoardSide):-
-  integer(CurrPos),
+  integer(CurrPos), % position can be a bank - not an integer
   CurrPos>0,
-  BoardSide = cpu,
+  BoardSide = cpu, % if we are more than 0 we stay on current BoardSide
   NextPos is CurrPos-1.
-dir(0,cpu,bank,cpu):-% player is human
+
+dir(0,cpu,bank,cpu):- % player is cpu-we go to the cpu's bank
   turn(cpu).
-dir(bank,cpu,0,human):-% player is cpu
-  turn(cpu).
-dir(0,cpu,0,human):-% player is cpu
+
+dir(bank,cpu,0,human):- % player is cpu and we are in his bank -
+  turn(cpu). % we go counter clockwise to the humans's row - start at pocket 0
+
+dir(0,cpu,0,human):- % player is human - we skip the cpu's bank
   turn(human).
 
-%Check if current pocket is empty
-isEmptyPocket(Pos,BoardSide):-
-  pocket(Pos,BoardSide,0).
-
-between1(Low,X,High):-
-  integer(X),
-  X=<High,
-  X>=Low.
-
-% check that the current player chooses a pocket on his side of the board that is not empty
+% ---------------------------------------------------------------------
+% checking pocket's validness:
+% ---------------------------------------------------------------------
+% check that the current player chooses a pocket on his side of the board
+%  that is not empty, & pocket is not a bank
 validPocket(Pos,BoardSide):-
   turn(BoardSide),
   between1(0,Pos,5),
   not(isEmptyPocket(Pos,BoardSide)).
 
-%The player will choose the pocket he wants to empty and put one stone in each of the next pockets
+% help predicate for the validPocket predicate
+between1(Low,X,High):-
+  integer(X),
+  X=<High,
+  X>=Low.
+
+% ---------------------------------------------------------------------
+% move from current pocket:
+% we collect all of the stones from current pocket
+% then we put one stone in each of the next pockets in the direction
+% untill we run out of stones and we stop.
+% if we stop at a bank - we get another turn
+% if we stop at other pockets we switch turns
+% CAPTURED - if we stop at an empty pocket in our side of the board
+% we check if the parallel pocket in the other side is empty
+% if it's not - we take our stone and all of the parallel pocket's stones
+% and put them in our bank
+% ---------------------------------------------------------------------
+% The player will choose the pocket he wants to empty and put one stone in
+% each of the next pockets
 move(Pos,BoardSide):-
   validPocket(Pos,BoardSide),
   emptyCurrPocket(Pos,BoardSide,NumOfStones),
-  dir(Pos,BoardSide,NextPos,NextBoardSide),%get the next pocket
-  move(NextPos,NextBoardSide,NumOfStones).%put one stone in each of the next pockets
+  dir(Pos,BoardSide,NextPos,NextBoardSide), % get the next pocket
+  move(NextPos,NextBoardSide,NumOfStones). % put one stone in each of the next pockets
 
-move(_,_,0):-%when we are out of stones - we stop
+move(_,_,0):- % when we are out of stones - we stop
   switchTurns.
-move(bank,BoardSide,1):-%when the last stone is in the bank - we get another turn
+
+move(bank,BoardSide,1):- % when the last stone is in the bank - we get another turn
   putInPocket(bank,BoardSide,1).
+
 move(Pos,BoardSide,1):-
-  (captured(Pos,BoardSide);
-  putInPocket(Pos,BoardSide,1)),
+  (captured(Pos,BoardSide); % CAPTURED as explained before
+  putInPocket(Pos,BoardSide,1)), % if not "captured" just put the stone in the pocket
   switchTurns.
+
+% overloading for move(Pos,BoardSide)
+% after we finished emptying the chosen pockets and took out his stones
+% we each one of them in the next pockets in the direction(counter clockwise)
 move(Pos,BoardSide,NumOfStones):-
-  putInPocket(Pos,BoardSide,1),%put one in current pocket
+  putInPocket(Pos,BoardSide,1), % put one in current pocket
   CurrNumOfStones is NumOfStones-1,
   dir(Pos,BoardSide,NextPos,NextBoardSide),
-  move(NextPos,NextBoardSide,CurrNumOfStones).%put a stone in the next cell
+  move(NextPos,NextBoardSide,CurrNumOfStones). % put a stone in the next cell
 
+/*************** switch turns - human to cpu ***************/
 switchTurns:-
   turn(human),
   retract(turn(human)),
   assert(turn(cpu)).
+
+/*************** switch turns - cpu to human ***************/
 switchTurns:-
   turn(cpu),
   retract(turn(cpu)),
   assert(turn(human)).
 
-%collect all stones from the entire row to the bank
+/*************** captured  ***************/
+%  if we stop at an empty pocket in our side of the board
+% we check if the parallel pocket in the other side is empty
+% if it's not - we take our stone and all of the parallel pocket's stones
+% and put them in our bank
+% captured is written twice and seperated between the human side of the board
+% and the cpu side of the board
+/*************** human's turn ***************/
+captured(Pos,human):-
+  isEmptyPocket(Pos,human), % check that we fell on an empty pocket
+  turn(human),
+  not(isEmptyPocket(Pos,cpu)), % the parallel pocket is not empty
+  emptyCurrPocket(Pos,cpu,CpuNumOfStones), % take out the stones from parallel
+  pocket(bank,human,BankNumOfStones),
+  retract(pocket(bank,human,BankNumOfStones)),
+  UpBankNumOfStones is BankNumOfStones + CpuNumOfStones + 1,
+  assert(pocket(bank,human,UpBankNumOfStones)). % put it in human's bank
+
+/*************** cpu's turn ***************/
+captured(Pos,cpu):-
+  isEmptyPocket(Pos,cpu), % check that we fell on an empty pocket
+  turn(cpu),
+  not(isEmptyPocket(Pos,human)), % the parallel pocket is not empty
+  emptyCurrPocket(Pos,human,HumanNumOfStones), % take out the stones from parallel
+  pocket(bank,cpu,BankNumOfStones),
+  retract(pocket(bank,cpu,BankNumOfStones)),
+  UpBankNumOfStones is BankNumOfStones + HumanNumOfStones + 1,
+  assert(pocket(bank,cpu,UpBankNumOfStones)). % put it in cpu's bank
+
+% ---------------------------------------------------------------------
+% collect all stones from all pockets in a specific row
+% ---------------------------------------------------------------------
 collectRow(BoardSide):-
-  collectRow(5,BoardSide).%overloading
-collectRow(-1,_).%finished the entire row
+  collectRow(5,BoardSide). % overloading - 5 pockets in a row
+collectRow(-1,_). % finished the entire row
 collectRow(Pos,BoardSide):-
   emptyCurrPocket(Pos,BoardSide,NumOfStones),
   pocket(bank,BoardSide,BankNumOfStones),
@@ -126,39 +248,29 @@ collectRow(Pos,BoardSide):-
   retract(pocket(bank,BoardSide,BankNumOfStones)),
   assert(pocket(bank,BoardSide,UpBankNumOfStones)),
   NewPos is Pos-1,
-  collectRow(NewPos,BoardSide).
+  collectRow(NewPos,BoardSide). % recursivly call the next pocket
 
-  %Game has ended if one side has no stones left
+% ---------------------------------------------------------------------
+% Check that the game was ended:
+% the game ends when one row is empty
+% then we take all the stones in the remaining row to the bank
+% of the remaining row's player
+% after that check who has more stones in the bank - it's the winner
+% ---------------------------------------------------------------------
 gameEnded:-
-  gameEnded1,%one row is empty and other row collected
+  gameEnded1, % one row is empty and other row collected
   pocket(bank,human,HumanNumOfStones),
   pocket(bank,cpu,CpuNumOfStones),
   ((HumanNumOfStones>CpuNumOfStones,assert(winner(human)));
   (HumanNumOfStones<CpuNumOfStones,assert(winner(cpu)));
   (HumanNumOfStones = CpuNumOfStones,assert(winner(tie)))).%no one won - it's a tie
-gameEnded1:-%check if a row is empty - collect the other
-  isEmptyRow(human),
-  collectRow(cpu).
-gameEnded1:-%check if a row is empty - collect the other
-  isEmptyRow(cpu),
-  collectRow(human).
 
-captured(Pos,human):-
-  isEmptyPocket(Pos,human),
-  turn(human),
-  not(isEmptyPocket(Pos,cpu)),
-  emptyCurrPocket(Pos,cpu,CpuNumOfStones),
-  pocket(bank,human,BankNumOfStones),
-  retract(pocket(bank,human,BankNumOfStones)),
-  UpBankNumOfStones is BankNumOfStones + CpuNumOfStones + 1,
-  assert(pocket(bank,human,UpBankNumOfStones)).
+% check if a row is empty - collect the other
+gameEnded1:-
+  isEmptyRow(human), % human's row is empty
+  collectRow(cpu). % collect all stones from cpu's row
 
-captured(Pos,cpu):-
-  isEmptyPocket(Pos,cpu),
-  turn(cpu),
-  not(isEmptyPocket(Pos,human)),
-  emptyCurrPocket(Pos,human,HumanNumOfStones),
-  pocket(bank,cpu,BankNumOfStones),
-  retract(pocket(bank,cpu,BankNumOfStones)),
-  UpBankNumOfStones is BankNumOfStones + HumanNumOfStones + 1,
-  assert(pocket(bank,cpu,UpBankNumOfStones)).
+% check if a row is empty - collect the other
+gameEnded1:-
+  isEmptyRow(cpu), % cpu's row is empty
+  collectRow(human). % collect all stones from human's row
