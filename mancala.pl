@@ -43,7 +43,9 @@ start:-
   start(5),
   assert(pocket(bank,human,0)),
   assert(pocket(bank,cpu,0)),
-  assert(turn(human)). % human starts first
+  random_member(Player,[cpu,human]), % use SWI built-in predicate random_member
+  % to choose the player that play first
+  assert(turn(Player)). % human starts first
 
 % initializing the 5 pockets of each player in the board:
 start(-1). % stop after 5 pockets for each player
