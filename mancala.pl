@@ -179,7 +179,8 @@ move(_,_,0):- % when we are out of stones - we stop
   switchTurns.
 
 move(bank,BoardSide,1):- % when the last stone is in the bank - we get another turn
-  putInPocket(bank,BoardSide,1).
+  putInPocket(bank,BoardSide,1),
+  switchTurns. %*************************************NEEDS TO BE REMOVED!!!!! ***********************
 
 move(Pos,BoardSide,1):-
   (captured(Pos,BoardSide); % CAPTURED as explained before
