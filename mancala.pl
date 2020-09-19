@@ -334,6 +334,8 @@ moves(State,Acc,PossibleMoves,Pos):-
   setBoard(State), % reset the board before the change
   insert(Pos-BoardSide-AfterMove,Acc,Acc1), % write the board and the pos that led to it
   NextPos is Pos-1,
+  retractall(turn(_)),
+  assert(turn(BoardSide)),
   moves(State,Acc1,PossibleMoves,NextPos).
 moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
   NextPos is Pos-1,
