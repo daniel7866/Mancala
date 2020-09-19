@@ -276,3 +276,62 @@ gameEnded1:-
 gameEnded1:-
   isEmptyRow(cpu), % cpu's row is empty
   collectRow(human). % collect all stones from human's row
+
+
+% ---------------------------------------------------------------------
+% get current board state in a list:
+% [pos-boardside-stones|...]
+% ---------------------------------------------------------------------
+
+insert(X,List,[X|List]). % just a simple insertion to a list
+
+getCurrentState(List):-
+  getCurrentState([],List1,5), % overloading
+  pocket(bank,cpu,CpuBank),
+  pocket(bank,human,HumanBank),
+  insert(bank-cpu-CpuBank,List1,List2), % insert the banks as well
+  insert(bank-human-HumanBank,List2,List).
+
+getCurrentState(Acc,Acc,-1). % after done with all pockets from 5 to 0
+getCurrentState(Acc,List,Pos):- % using accumulator
+  pocket(Pos,cpu,CpuNumOfStones),
+  pocket(Pos,human,HumanNumOfStones),
+  insert(Pos-cpu-CpuNumOfStones,Acc,Acc1),
+  insert(Pos-human-HumanNumOfStones,Acc1,Acc2),
+  NextPos is Pos-1,
+  getCurrentState(Acc2,List,NextPos).
+
+% ---------------------------------------------------------------------
+% set current board from a state given in a list:
+% [pos-boardside-stones|...]
+% ---------------------------------------------------------------------
+setBoard([]).
+setBoard([Pos-Player-NumOfStones|Tail]):-
+  retractall(pocket(Pos,Player,_)),
+  assert(pocket(Pos,Player,NumOfStones)),
+  setBoard(Tail).
+% ---------------------------------------------------------------------
+% get all possible moves from a specific board state
+% the moves will be in a list like this:
+% [PosPlayed-BoardSide-The_state_after_the_change|...]
+% ---------------------------------------------------------------------
+moves(State,PossibleMoves):-
+  getCurrentState(OriginalState), % get the state before any changes are made
+  moves(State,[],PossibleMoves,5), % overloading (use accumulator)
+  setBoard(OriginalState). % reset the board as it was before
+
+% after done checking all pockets from 5 to 0
+moves(_,PossibleMoves,PossibleMoves,-1).
+moves(State,Acc,PossibleMoves,Pos):-
+  setBoard(State),
+  turn(BoardSide),
+  validPocket(Pos,BoardSide),!, % if this pocket is valid - write it as a possible move
+  move(Pos,BoardSide), % change the board and get the current state
+  getCurrentState(AfterMove),
+  setBoard(State), % reset the board before the change
+  insert(Pos-BoardSide-AfterMove,Acc,Acc1), % write the board and the pos that led to it
+  NextPos is Pos-1,
+  moves(State,Acc1,PossibleMoves,NextPos).
+moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
+  NextPos is Pos-1,
+  moves(State,Acc,PossibleMoves,NextPos).
