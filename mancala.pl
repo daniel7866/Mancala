@@ -316,9 +316,12 @@ setBoard([Pos-Player-NumOfStones|Tail]):-
 % [PosPlayed-BoardSide-The_state_after_the_change|...]
 % ---------------------------------------------------------------------
 moves(State,PossibleMoves):-
+  turn(Player),
   getCurrentState(OriginalState), % get the state before any changes are made
   moves(State,[],PossibleMoves,5), % overloading (use accumulator)
-  setBoard(OriginalState). % reset the board as it was before
+  setBoard(OriginalState), % reset the board as it was before
+  retractall(turn(_)),
+  assert(turn(Player)).
 
 % after done checking all pockets from 5 to 0
 moves(_,PossibleMoves,PossibleMoves,-1).
