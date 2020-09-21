@@ -340,3 +340,65 @@ moves(State,Acc,PossibleMoves,Pos):-
 moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
   NextPos is Pos-1,
   moves(State,Acc,PossibleMoves,NextPos).
+
+% ---------------------------------------------------------------------
+%-------------------------------AlphaBeta------------------------------
+% ---------------------------------------------------------------------
+
+% minToMove(State) -> State = [PosPlayed-BoardSide-State]
+% A given state saves the pocket and boardSide that led to that state
+% This is the OPPOSITE from the meaning in the book in page 285
+minToMove(_-human-_). % if human played last - he is a minimum player
+maxToMove(_-cpu-_). % if cpu played last - he is a maximum player
+
+% staticVal gets the huristic value
+% the huristic value is how much stones does cpu has in the bank more than human:
+% cpu wants to have more stones than human - max player.
+% human wants to have more stones than cpu - smaller value = min player.
+staticVal(State,Val):-
+  getCurrentState(OriginalState),
+  setBoard(State),
+  pocket(bank,human,HumanBank),
+  pocket(bank,cpu,CpuBank),
+  Val is CpuBank-HumanBank,
+  setBoard(OriginalState).
+
+alphaBeta(Depth,_-_-State,Alpha,Beta,GoodState,Val):-
+  Depth>0,
+  moves(State,StateList),!, % if game ended the stateList is empty list
+  Depth1 is Depth-1,
+  boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
+  staticVal(State,Val).
+
+boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
+  alphaBeta(Depth,State,Alpha,Beta,_,Val),
+  goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal).
+
+goodEnough(_,[],_,_,State,Val,State,Val). % no moves - game ended
+
+goodEnough(_,_,Alpha,Beta,State,Val,State,Val):-
+  maxToMove(State),Val>Beta,!; % i am a maximum - max played to reach State
+  minToMove(State),Val<Alpha,!.% i am a minimum - min played to reach State
+
+goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal):-
+  newBounds(Alpha,Beta,State,Val,NewAlpha,NewBeta), % refine bounds
+  boundedBest(Depth,StateList,NewAlpha,NewBeta,State1,Val1),
+  betterOf(State,Val,State1,Val1,GoodState,GoodVal).
+
+% if a max node can reach value greater than alpha - we can raise alpha:
+% obviously a max node won't prefer something smaller
+newBounds(Alpha,Beta,State,Val,Val,Beta):-
+  maxToMove(State),Val > Alpha,!.
+
+% if a min node can reach value smaller than beta - we can make beta smaller:
+% obviously a min node won't prefer something greater
+newBounds(Alpha,Beta,State,Val,Alpha,Val):-
+  minToMove(State),Val<Beta,!.
+
+newBounds(Alpha,Beta,_,_,Alpha,Beta). % bounds unchanged
+
+betterOf(State,Val,State1,Val1,State,Val):-
+  maxToMove(State),Val>Val1,!; % if max led to this state - he wants the bigger value (opposite from the book)
+  minToMove(State),Val<Val1,!. % if min led to this state - he wants the lower value (opposite from the book)
+
+betterOf(_,_,State1,Val1,State1,Val1).
