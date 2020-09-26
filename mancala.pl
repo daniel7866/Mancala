@@ -363,7 +363,9 @@ staticVal(State,Val):-
   setBoard(OriginalState).
 
 runAlphaBeta(Depth,GoodState,GoodVal):-
-  getCurrentState(_-_-State-Player),alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal).
+  getCurrentState(_-_-State-Player),
+  alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),
+  setBoard(_-_-State-Player).
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
   setBoard(_-_-State-Player),not(gameEnded),
   Depth>0,
@@ -404,3 +406,99 @@ betterOf(State,Val,State1,Val1,State,Val):-
   minToMove(State),Val<Val1,!. % if min led to this state - he wants the lower value (opposite from the book)
 
 betterOf(_,_,State1,Val1,State1,Val1).
+
+
+% ---------------------------------------------------------------------
+%-------------------------------GUI------------------------------------
+% ---------------------------------------------------------------------
+
+mainGameLoop:-
+  printManual,%here player selects difficulty
+  start,printBoard,mainGameLoop1.
+mainGameLoop1:-
+  gameEnded,!,write("Game over!"),nl,winner(WINNER),
+  (((WINNER == tie),
+  write("It's a tie!"),nl);
+  write("The winner is "),write(WINNER),nl),
+  write("Cpu got "),pocket(bank,cpu,CPU_SCORE),write(CPU_SCORE),
+  write(" stones"),nl,
+  write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
+  write(" stones"),nl.
+mainGameLoop1:-
+  turn(cpu),!,write("Cpu's turn"),nl,
+  runAlphaBeta(4,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  printBoard,mainGameLoop1.
+mainGameLoop1:-
+  turn(human),!,write("It's your turn"),nl,
+  getInput(ChosenPocket),move(ChosenPocket,human),
+  printBoard,mainGameLoop1.
+
+printManual.
+
+getInput(ChosenPocket):-
+  repeat,read(ChosenPocket),
+  (between1(0,ChosenPocket,5),
+  not(isEmptyPocket(ChosenPocket,human)),!;fail).
+
+%print the board
+printBoard:-
+  printBoardNames(cpu,0),
+  printBoardLines(0),
+  printBoardValues(cpu,0),
+  printBoardLines(0),
+  printBanks,
+  printBoardNames(human,0),
+  printBoardLines(0),
+  printBoardValues(human,0),
+  printBoardLines(0),nl,nl,nl,nl,nl,nl,nl,nl,nl.
+
+%---------print boardLines--------------
+printBoardLines(6):-
+  nl.
+printBoardLines(N):-
+  write("          "),%10 spaces = pocket
+  write("----------"),
+  N1 is N+1,
+  printBoardLines(N1).
+
+
+%---------print cpu board--------------
+printBoardNames(Player,6):-
+  nl.
+printBoardNames(Player,N):-
+  ((Player==cpu,write("          "),%10 spaces = pocket
+  write("   cpu - "));
+  (Player==human,write("          "),%10 spaces = pocket
+  write(" human - "))),
+  write(N),
+  N1 is N+1,
+  printBoardNames(Player,N1).
+
+printBoardValues(Player,6):-
+  nl.
+printBoardValues(Player,N):-
+  write("          "),%10 spaces = pocket
+  write("|   "),((Player==cpu,pocket(N,cpu,CNT));
+  (Player==human),pocket(N,human,CNT)),write(CNT),
+  write("    |"),
+  N1 is N+1,
+  printBoardValues(Player,N1).
+
+printBanks:-
+  pocket(bank,cpu,CPUBANK),
+  pocket(bank,human,HUMANBANK),
+  write(" cpu bank "),
+  write("                                                                                                              "),%110 spaces
+  write("human bank"),nl,
+  write("----------"),
+  write("                                                                                                              "),%110 spaces
+  write("----------"),nl,
+  write("|   "),write(CPUBANK),
+  write("    |"),
+  write("                                                                                                              "),%110 spaces
+  write("|   "),write(HUMANBANK),
+  write("    |"),nl,
+  write("----------"),
+  write("                                                                                                              "),%110 spaces
+  write("----------"),
+  nl.
