@@ -2,11 +2,9 @@
 %              20596 - Prolog & Artificial Intelligence
 %                      Maman 17 - Final Project
 % ---------------------------------------------------------------------
-% Programmers:
+% Programmer:
 %   Name: Daniel Fogel
 %   ID: 208778654
-%   Name: Hila Deri
-%   ID: 301785861
 % ---------------------------------------------------------------------
 % File Name: Mancala.pl
 % ---------------------------------------------------------------------
@@ -179,8 +177,8 @@ move(_,_,0):- % when we are out of stones - we stop
   switchTurns.
 
 move(bank,BoardSide,1):- % when the last stone is in the bank - we get another turn
-  putInPocket(bank,BoardSide,1),
-  switchTurns. %*************************************NEEDS TO BE REMOVED!!!!! ***********************
+  putInPocket(bank,BoardSide,1).
+  %switchTurns. %*************************************NEEDS TO BE REMOVED!!!!! ***********************
 
 move(Pos,BoardSide,1):-
   (captured(Pos,BoardSide); % CAPTURED as explained before
@@ -278,19 +276,20 @@ gameEnded1:-
   collectRow(human). % collect all stones from human's row
 
 
+insert(X,List,[X|List]). % just a simple insertion to a list
 % ---------------------------------------------------------------------
 % get current board state in a list:
-% [pos-boardside-stones|...]
+% Pos taht led To this state-BoardSidePocket that Led To this State-[pos-boardside-stones|...]-whose turn it is now in this state
+% Pos and BoardSide both= _ because they are unkown
 % ---------------------------------------------------------------------
 
-insert(X,List,[X|List]). % just a simple insertion to a list
-
-getCurrentState(List):-
+getCurrentState(_-_-List-Player):-
   getCurrentState([],List1,5), % overloading
   pocket(bank,cpu,CpuBank),
   pocket(bank,human,HumanBank),
   insert(bank-cpu-CpuBank,List1,List2), % insert the banks as well
-  insert(bank-human-HumanBank,List2,List).
+  insert(bank-human-HumanBank,List2,List),
+  turn(Player). % who plays now in this state
 
 getCurrentState(Acc,Acc,-1). % after done with all pockets from 5 to 0
 getCurrentState(Acc,List,Pos):- % using accumulator
@@ -303,17 +302,21 @@ getCurrentState(Acc,List,Pos):- % using accumulator
 
 % ---------------------------------------------------------------------
 % set current board from a state given in a list:
-% [pos-boardside-stones|...]
+% pos led to state - BoardSidePocket led to state - [pos-boardside-stones|...] - current player on this state
+% pos and BoardSidePocket are _ becase we don't care about them
 % ---------------------------------------------------------------------
-setBoard([]).
-setBoard([Pos-Player-NumOfStones|Tail]):-
+setBoard(_-_-[]-CurrPlayer):-
+  retractall(turn(_)),
+  assert(turn(CurrPlayer)).
+setBoard(_-_-[Pos-Player-NumOfStones|Tail]-CurrPlayer):-
   retractall(pocket(Pos,Player,_)),
   assert(pocket(Pos,Player,NumOfStones)),
-  setBoard(Tail).
+  setBoard(_-_-Tail-CurrPlayer).
 % ---------------------------------------------------------------------
 % get all possible moves from a specific board state
 % the moves will be in a list like this:
 % [PosPlayed-BoardSide-The_state_after_the_change|...]
+% the state of the given change is a list [state]-Player => Player = who plays in this state
 % ---------------------------------------------------------------------
 moves(State,PossibleMoves):-
   turn(Player),
@@ -327,15 +330,11 @@ moves(State,PossibleMoves):-
 moves(_,PossibleMoves,PossibleMoves,-1).
 moves(State,Acc,PossibleMoves,Pos):-
   setBoard(State),
-  turn(BoardSide),
-  validPocket(Pos,BoardSide),!, % if this pocket is valid - write it as a possible move
   move(Pos,BoardSide), % change the board and get the current state
-  getCurrentState(AfterMove),
+  getCurrentState(_-_-AfterMove-Player),
   setBoard(State), % reset the board before the change
-  insert(Pos-BoardSide-AfterMove,Acc,Acc1), % write the board and the pos that led to it
+  insert(Pos-BoardSide-AfterMove-Player,Acc,Acc1), % write the board and the pos that led to it
   NextPos is Pos-1,
-  retractall(turn(_)),
-  assert(turn(BoardSide)),
   moves(State,Acc1,PossibleMoves,NextPos).
 moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
   NextPos is Pos-1,
@@ -348,8 +347,8 @@ moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
 % minToMove(State) -> State = [PosPlayed-BoardSide-State]
 % A given state saves the pocket and boardSide that led to that state
 % This is the OPPOSITE from the meaning in the book in page 285
-minToMove(_-human-_). % if human played last - he is a minimum player
-maxToMove(_-cpu-_). % if cpu played last - he is a maximum player
+minToMove(_-human-_-_). % if human played last - he is a minimum player
+maxToMove(_-cpu-_-_). % if cpu played last - he is a maximum player
 
 % staticVal gets the huristic value
 % the huristic value is how much stones does cpu has in the bank more than human:
@@ -363,12 +362,15 @@ staticVal(State,Val):-
   Val is CpuBank-HumanBank,
   setBoard(OriginalState).
 
-alphaBeta(Depth,_-_-State,Alpha,Beta,GoodState,Val):-
+runAlphaBeta(Depth,GoodState,GoodVal):-
+  getCurrentState(_-_-State-Player),alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal).
+alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
+  setBoard(_-_-State-Player),not(gameEnded),
   Depth>0,
-  moves(State,StateList),!, % if game ended the stateList is empty list
+  moves(_-_-State-Player,StateList),!, % if game ended the stateList is empty list
   Depth1 is Depth-1,
   boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
-  staticVal(State,Val).
+  staticVal(_-_-State-Player,Val).
 
 boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
   alphaBeta(Depth,State,Alpha,Beta,_,Val),

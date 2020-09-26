@@ -2,11 +2,9 @@
 %              20596 - Prolog & Artificial Intelligence
 %                      Maman 17 - Final Project
 % ---------------------------------------------------------------------
-% Programmers:
+% Programmer:
 %   Name: Daniel Fogel
 %   ID: 208778654
-%   Name: Hila Deri
-%   ID: 301785861
 % ---------------------------------------------------------------------
 % File Name: Mancala.pl
 % ---------------------------------------------------------------------
@@ -368,7 +366,7 @@ runAlphaBeta(Depth,GoodState,GoodVal):-
   getCurrentState(_-_-State-Player),alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal).
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
   Depth>0,
-  moves(_-_-State-Player,StateList),!, % if game ended the stateList is empty list
+  moves(_-_-State-Player,StateList),StateList\=[]!, % if game ended the stateList is empty list
   Depth1 is Depth-1,
   boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
   staticVal(_-_-State-Player,Val).
