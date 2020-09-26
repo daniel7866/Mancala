@@ -427,6 +427,7 @@ mainGameLoop1:-
 mainGameLoop1:-
   turn(cpu),!,write("Cpu's turn"),nl,
   runAlphaBeta(4,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("cpu chose pocket "),write(Pocket),nl,
   printBoard,mainGameLoop1.
 mainGameLoop1:-
   turn(human),!,write("It's your turn"),nl,
@@ -450,7 +451,10 @@ printBoard:-
   printBoardNames(human,0),
   printBoardLines(0),
   printBoardValues(human,0),
-  printBoardLines(0),nl,nl,nl,nl,nl,nl,nl,nl,nl.
+  printBoardLines(0),
+  nl,nl,nl,nl,nl,nl,nl,nl,nl,
+  nl,nl,nl,nl,nl,nl,nl,nl,nl,
+  nl,nl,nl,nl,nl,nl,nl,nl,nl.
 
 %---------print boardLines--------------
 printBoardLines(6):-
