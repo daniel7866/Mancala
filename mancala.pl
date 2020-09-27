@@ -427,11 +427,17 @@ betterOf(_,_,State1,Val1,State1,Val1).
 % ---------------------------------------------------------------------
 
 mainGameLoop:-
-  %welcomeMessage,
+  welcomeMessage,
   chooseDifficulty,
   start,%initialize the board
   printBoard,
-  mainGameLoop1.
+  mainGameLoop1,
+  cleanUp, % after we are done playing - clean memory
+  write("Do you want to play again? (y/n)"),nl,!,
+  repeat,read(Ans),
+  ((Ans=='y',!,nl,nl,nl,mainGameLoop);
+   (Ans=='n',!,write("Thank you for playing!"),nl,write("Good Bye!"),nl,!);
+   (write("You have to choose between y or no"),nl,fail)).
 mainGameLoop1:-
   gameEnded,!,write("Game over!"),nl,winner(WINNER),
   (((WINNER == tie),
@@ -455,10 +461,12 @@ welcomeMessage:-
   write("Welcome to mancala! made by Daniel Fogel"),nl,
   write("Would you like to view the game manual?(y/n)"),nl,
   repeat,read(Ans),
-  (((Ans=="y"),printManual);
-  (Ans=="n")),!;(write("type only y/n"),nl,fail).
+  ((Ans=='y',printManual,nl,!);
+   (Ans=='n',!);
+   (write("You have to choose between y or n"),nl,fail)).
 
 printManual:-
+  nl,nl,write("Game manual:"),nl,
   write("Mancala is a two person board game"),nl,
   write("This game has a board with two sides - one for each player"),nl,
   write("Each player has 6 pockets: pockets 0-5 and a bank"),nl,
@@ -472,14 +480,14 @@ printManual:-
   write("Speacial moves:"),nl,
   write("Free turn: If your last stone landed in your bank - you get a free turn!"),nl,
   write("Captured: If your last stone landed in an empty pocket and there are stones in the same pocket on the opposite side"),nl,
-  write("you'll take all of them to your bank!").
+  write("you'll take all of them to your bank!"),nl.
 
 chooseDifficulty:-
   write("Please choose your difficulty"),nl,
   write("Type '1.' for Easy"),nl,
   write("Type '2.' for Medium"),nl,
   write("Type '3.' for Hard"),nl,
-  write("Type '4.' for Extreme - hint: this will cause longer respond time from the computer"),nl,
+  write("Type '4.' for Extreme  ~warning: this will cause longer respond time from the computer"),nl,
   !,repeat,read(Ans),
   ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!,
   assert(difficulty(Ans));fail.
@@ -490,11 +498,11 @@ chooseDifficulty:-
 getInput(ChosenPocket):-
   write("Please choose your pocket (integer between 0 - 5) followed by a period."),nl,
   repeat,read(ChosenPocket),
-  ((between1(0,ChosenPocket,5);
-  (write("Must be in range [0,5]"),nl,write("Try again!"),nl,fail)),
-  (not(isEmptyPocket(ChosenPocket,human));
-  (write("Cannot choose empty pocket!"),nl,write("Try again!"),nl,fail)),!;
-  fail).
+  not(
+  (((not(integer(ChosenPocket));not(between1(0,ChosenPocket,5))),
+   write("Must be in range [0,5]"),nl,write("Try again!"),nl);
+  (isEmptyPocket(ChosenPocket,human),
+   write("Cannot choose empty pocket!"),nl,write("Try again!"),nl))),!.
 
 %print the board
 printBoard:-
