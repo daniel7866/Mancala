@@ -23,6 +23,7 @@
 % specific pocekt in the board game.
 :- dynamic turn/1. % turn(player) - represents who can play now.
 :- dynamic winner/1. % winner (player) - represents the game's winner.
+:- dynamic difficulty/1. % the difficulty is the depth for alpha beta
 
 % ---------------------------------------------------------------------
 % memory cleaning of dynamic predicates:
@@ -30,6 +31,7 @@
 cleanUp:-
   retractall(pocket(_,_,_)), % cleans pocket(pos, player, stones count)
   retractall(turn(_)), % cleans turn(player)
+  retractall(difficulty(_)),
   retractall(winner(_)). % cleans winner(player)
 
 % ---------------------------------------------------------------------
@@ -223,6 +225,7 @@ captured(Pos,human):-
   retract(pocket(bank,human,BankNumOfStones)),
   UpBankNumOfStones is BankNumOfStones + CpuNumOfStones + 1,
   assert(pocket(bank,human,UpBankNumOfStones)). % put it in human's bank
+  %nl,write("You captured "),write(CpuNumOfStones+1),write(" stones!"),nl.
 
 /*************** cpu's turn ***************/
 captured(Pos,cpu):-
@@ -234,6 +237,7 @@ captured(Pos,cpu):-
   retract(pocket(bank,cpu,BankNumOfStones)),
   UpBankNumOfStones is BankNumOfStones + HumanNumOfStones + 1,
   assert(pocket(bank,cpu,UpBankNumOfStones)). % put it in cpu's bank
+  %nl,write("Cpu captured "),write(HumanNumOfStones+1),write(" stones!"),nl.
 
 % ---------------------------------------------------------------------
 % collect all stones from all pockets in a specific row
@@ -306,7 +310,7 @@ getCurrentState(Acc,List,Pos):- % using accumulator
 % pos and BoardSidePocket are _ becase we don't care about them
 % ---------------------------------------------------------------------
 setBoard(_-_-[]-CurrPlayer):-
-  retractall(turn(_)),
+  retractall(turn(_)),retractall(winner(_)),
   assert(turn(CurrPlayer)).
 setBoard(_-_-[Pos-Player-NumOfStones|Tail]-CurrPlayer):-
   retractall(pocket(Pos,Player,_)),
@@ -322,22 +326,22 @@ moves(State,PossibleMoves):-
   turn(Player),
   getCurrentState(OriginalState), % get the state before any changes are made
   moves(State,[],PossibleMoves,5), % overloading (use accumulator)
-  setBoard(OriginalState), % reset the board as it was before
+  setBoard(OriginalState),!, % reset the board as it was before
   retractall(turn(_)),
   assert(turn(Player)).
 
 % after done checking all pockets from 5 to 0
-moves(_,PossibleMoves,PossibleMoves,-1).
+moves(_,PossibleMoves,PossibleMoves,-1):-!.
 moves(State,Acc,PossibleMoves,Pos):-
   setBoard(State),
   move(Pos,BoardSide), % change the board and get the current state
   getCurrentState(_-_-AfterMove-Player),
   setBoard(State), % reset the board before the change
   insert(Pos-BoardSide-AfterMove-Player,Acc,Acc1), % write the board and the pos that led to it
-  NextPos is Pos-1,
+  NextPos is Pos-1,!,
   moves(State,Acc1,PossibleMoves,NextPos).
 moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
-  NextPos is Pos-1,
+  NextPos is Pos-1,!,
   moves(State,Acc,PossibleMoves,NextPos).
 
 % ---------------------------------------------------------------------
@@ -362,17 +366,27 @@ staticVal(State,Val):-
   Val is CpuBank-HumanBank,
   setBoard(OriginalState).
 
+staticValGameEnded(State,Val):-
+  getCurrentState(OriginalState),
+  setBoard(State),
+  gameEnded,
+  pocket(bank,human,HumanBank),
+  pocket(bank,cpu,CpuBank),
+  Val is CpuBank-HumanBank,
+  setBoard(OriginalState).
+
 runAlphaBeta(Depth,GoodState,GoodVal):-
   getCurrentState(_-_-State-Player),
   alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),
   setBoard(_-_-State-Player).
+
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
-  setBoard(_-_-State-Player),not(gameEnded),
   Depth>0,
-  moves(_-_-State-Player,StateList),!, % if game ended the stateList is empty list
+  moves(_-_-State-Player,StateList),StateList\=[],!, % if game ended the stateList is empty list
   Depth1 is Depth-1,
   boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
-  staticVal(_-_-State-Player,Val).
+  ((StateList==[],staticValGameEnded(_-_-State-Player,Val));
+  staticVal(_-_-State-Player,Val)).
 
 boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
   alphaBeta(Depth,State,Alpha,Beta,_,Val),
@@ -413,8 +427,17 @@ betterOf(_,_,State1,Val1,State1,Val1).
 % ---------------------------------------------------------------------
 
 mainGameLoop:-
-  printManual,%here player selects difficulty
-  start,printBoard,mainGameLoop1.
+  welcomeMessage,
+  chooseDifficulty,
+  start,%initialize the board
+  printBoard,
+  mainGameLoop1,
+  cleanUp, % after we are done playing - clean memory
+  write("Do you want to play again? (y/n)"),nl,!,
+  repeat,read(Ans),
+  ((Ans=='y',!,nl,nl,nl,mainGameLoop);
+   (Ans=='n',!,write("Thank you for playing!"),nl,write("Good Bye!"),nl,!);
+   (write("You have to choose between y or no"),nl,fail)).
 mainGameLoop1:-
   gameEnded,!,write("Game over!"),nl,winner(WINNER),
   (((WINNER == tie),
@@ -425,21 +448,61 @@ mainGameLoop1:-
   write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
   write(" stones"),nl.
 mainGameLoop1:-
-  turn(cpu),!,write("Cpu's turn"),nl,
-  runAlphaBeta(4,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
-  write("cpu chose pocket "),write(Pocket),nl,
+  turn(cpu),!,write("Cpu's turn"),nl,difficulty(DepthForAlphaBeta),
+  runAlphaBeta(DepthForAlphaBeta,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("cpu chose pocket "),write(Pocket),nl,sleep(3),
   printBoard,mainGameLoop1.
 mainGameLoop1:-
   turn(human),!,write("It's your turn"),nl,
   getInput(ChosenPocket),move(ChosenPocket,human),
   printBoard,mainGameLoop1.
 
-printManual.
+welcomeMessage:-
+  write("Welcome to mancala! made by Daniel Fogel"),nl,
+  write("Would you like to view the game manual?(y/n)"),nl,
+  repeat,read(Ans),
+  ((Ans=='y',printManual,nl,!);
+   (Ans=='n',!);
+   (write("You have to choose between y or n"),nl,fail)).
 
+printManual:-
+  nl,nl,write("Game manual:"),nl,
+  write("Mancala is a two person board game"),nl,
+  write("This game has a board with two sides - one for each player"),nl,
+  write("Each player has 6 pockets: pockets 0-5 and a bank"),nl,
+  write("The goal is to get more stones in your bank to beat the other player"),nl,
+  write("The game is finished when one row is empty,"),nl,
+  write("then the player in the opposite row collects all stones remaining in his row."),nl,
+  write("Then we count who has more stones in his bank."),nl,
+  write("Player with most stones wins!"),nl,
+  write("When you choose a pocket you empty it,"),nl,
+  write("Then you put one stone in each of the next pockets counter clockwise untill you ran out of stones"),nl,nl,
+  write("Speacial moves:"),nl,
+  write("Free turn: If your last stone landed in your bank - you get a free turn!"),nl,
+  write("Captured: If your last stone landed in an empty pocket and there are stones in the same pocket on the opposite side"),nl,
+  write("you'll take all of them to your bank!"),nl.
+
+chooseDifficulty:-
+  write("Please choose your difficulty"),nl,
+  write("Type '1.' for Easy"),nl,
+  write("Type '2.' for Medium"),nl,
+  write("Type '3.' for Hard"),nl,
+  write("Type '4.' for Extreme  ~warning: this will cause longer respond time from the computer"),nl,
+  !,repeat,read(Ans),
+  ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!,
+  assert(difficulty(Ans));fail.
+%This predicate gets a pocket number from the player
+%The number is between 0 and 5
+%If the player chose an empty pocket or invalid number it will prompt a message
+%and let the player try again
 getInput(ChosenPocket):-
+  write("Please choose your pocket (integer between 0 - 5) followed by a period."),nl,
   repeat,read(ChosenPocket),
-  (between1(0,ChosenPocket,5),
-  not(isEmptyPocket(ChosenPocket,human)),!;fail).
+  not(
+  (((not(integer(ChosenPocket));not(between1(0,ChosenPocket,5))),
+   write("Must be in range [0,5]"),nl,write("Try again!"),nl);
+  (isEmptyPocket(ChosenPocket,human),
+   write("Cannot choose empty pocket!"),nl,write("Try again!"),nl))),!.
 
 %print the board
 printBoard:-
@@ -453,8 +516,8 @@ printBoard:-
   printBoardValues(human,0),
   printBoardLines(0),
   nl,nl,nl,nl,nl,nl,nl,nl,nl,
-  nl,nl,nl,nl,nl,nl,nl,nl,nl,
   nl,nl,nl,nl,nl,nl,nl,nl,nl.
+  %nl,nl,nl,nl,nl,nl,nl,nl,nl.
 
 %---------print boardLines--------------
 printBoardLines(6):-
