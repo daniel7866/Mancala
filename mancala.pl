@@ -223,6 +223,7 @@ captured(Pos,human):-
   retract(pocket(bank,human,BankNumOfStones)),
   UpBankNumOfStones is BankNumOfStones + CpuNumOfStones + 1,
   assert(pocket(bank,human,UpBankNumOfStones)). % put it in human's bank
+  %nl,write("You captured "),write(CpuNumOfStones+1),write(" stones!"),nl.
 
 /*************** cpu's turn ***************/
 captured(Pos,cpu):-
@@ -234,6 +235,7 @@ captured(Pos,cpu):-
   retract(pocket(bank,cpu,BankNumOfStones)),
   UpBankNumOfStones is BankNumOfStones + HumanNumOfStones + 1,
   assert(pocket(bank,cpu,UpBankNumOfStones)). % put it in cpu's bank
+  %nl,write("Cpu captured "),write(HumanNumOfStones+1),write(" stones!"),nl.
 
 % ---------------------------------------------------------------------
 % collect all stones from all pockets in a specific row
@@ -322,22 +324,22 @@ moves(State,PossibleMoves):-
   turn(Player),
   getCurrentState(OriginalState), % get the state before any changes are made
   moves(State,[],PossibleMoves,5), % overloading (use accumulator)
-  setBoard(OriginalState), % reset the board as it was before
+  setBoard(OriginalState),!, % reset the board as it was before
   retractall(turn(_)),
   assert(turn(Player)).
 
 % after done checking all pockets from 5 to 0
-moves(_,PossibleMoves,PossibleMoves,-1).
+moves(_,PossibleMoves,PossibleMoves,-1):-!.
 moves(State,Acc,PossibleMoves,Pos):-
   setBoard(State),
   move(Pos,BoardSide), % change the board and get the current state
   getCurrentState(_-_-AfterMove-Player),
   setBoard(State), % reset the board before the change
   insert(Pos-BoardSide-AfterMove-Player,Acc,Acc1), % write the board and the pos that led to it
-  NextPos is Pos-1,
+  NextPos is Pos-1,!,
   moves(State,Acc1,PossibleMoves,NextPos).
 moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
-  NextPos is Pos-1,
+  NextPos is Pos-1,!,
   moves(State,Acc,PossibleMoves,NextPos).
 
 % ---------------------------------------------------------------------
@@ -367,9 +369,8 @@ runAlphaBeta(Depth,GoodState,GoodVal):-
   alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),
   setBoard(_-_-State-Player).
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
-  setBoard(_-_-State-Player),not(gameEnded),
   Depth>0,
-  moves(_-_-State-Player,StateList),!, % if game ended the stateList is empty list
+  moves(_-_-State-Player,StateList),StateList\=[],!, % if game ended the stateList is empty list
   Depth1 is Depth-1,
   boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
   staticVal(_-_-State-Player,Val).
@@ -453,8 +454,8 @@ printBoard:-
   printBoardValues(human,0),
   printBoardLines(0),
   nl,nl,nl,nl,nl,nl,nl,nl,nl,
-  nl,nl,nl,nl,nl,nl,nl,nl,nl,
   nl,nl,nl,nl,nl,nl,nl,nl,nl.
+  %nl,nl,nl,nl,nl,nl,nl,nl,nl.
 
 %---------print boardLines--------------
 printBoardLines(6):-
