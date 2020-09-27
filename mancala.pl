@@ -23,6 +23,7 @@
 % specific pocekt in the board game.
 :- dynamic turn/1. % turn(player) - represents who can play now.
 :- dynamic winner/1. % winner (player) - represents the game's winner.
+:- dynamic difficulty/1. % the difficulty is the depth for alpha beta
 
 % ---------------------------------------------------------------------
 % memory cleaning of dynamic predicates:
@@ -30,6 +31,7 @@
 cleanUp:-
   retractall(pocket(_,_,_)), % cleans pocket(pos, player, stones count)
   retractall(turn(_)), % cleans turn(player)
+  retractall(difficulty(_)),
   retractall(winner(_)). % cleans winner(player)
 
 % ---------------------------------------------------------------------
@@ -414,8 +416,11 @@ betterOf(_,_,State1,Val1,State1,Val1).
 % ---------------------------------------------------------------------
 
 mainGameLoop:-
-  printManual,%here player selects difficulty
-  start,printBoard,mainGameLoop1.
+  %welcomeMessage,
+  chooseDifficulty,
+  start,%initialize the board
+  printBoard,
+  mainGameLoop1.
 mainGameLoop1:-
   gameEnded,!,write("Game over!"),nl,winner(WINNER),
   (((WINNER == tie),
@@ -426,21 +431,59 @@ mainGameLoop1:-
   write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
   write(" stones"),nl.
 mainGameLoop1:-
-  turn(cpu),!,write("Cpu's turn"),nl,
-  runAlphaBeta(4,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
-  write("cpu chose pocket "),write(Pocket),nl,
+  turn(cpu),!,write("Cpu's turn"),nl,difficulty(DepthForAlphaBeta),
+  runAlphaBeta(DepthForAlphaBeta,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("cpu chose pocket "),write(Pocket),nl,sleep(3),
   printBoard,mainGameLoop1.
 mainGameLoop1:-
   turn(human),!,write("It's your turn"),nl,
   getInput(ChosenPocket),move(ChosenPocket,human),
   printBoard,mainGameLoop1.
 
-printManual.
+welcomeMessage:-
+  write("Welcome to mancala! made by Daniel Fogel"),nl,
+  write("Would you like to view the game manual?(y/n)"),nl,
+  repeat,read(Ans),
+  (((Ans=="y"),printManual);
+  (Ans=="n")),!;(write("type only y/n"),nl,fail).
 
+printManual:-
+  write("Mancala is a two person board game"),nl,
+  write("This game has a board with two sides - one for each player"),nl,
+  write("Each player has 6 pockets: pockets 0-5 and a bank"),nl,
+  write("The goal is to get more stones in your bank to beat the other player"),nl,
+  write("The game is finished when one row is empty,"),nl,
+  write("then the player in the opposite row collects all stones remaining in his row."),nl,
+  write("Then we count who has more stones in his bank."),nl,
+  write("Player with most stones wins!"),nl,
+  write("When you choose a pocket you empty it,"),nl,
+  write("Then you put one stone in each of the next pockets counter clockwise untill you ran out of stones"),nl,nl,
+  write("Speacial moves:"),nl,
+  write("Free turn: If your last stone landed in your bank - you get a free turn!"),nl,
+  write("Captured: If your last stone landed in an empty pocket and there are stones in the same pocket on the opposite side"),nl,
+  write("you'll take all of them to your bank!").
+
+chooseDifficulty:-
+  write("Please choose your difficulty"),nl,
+  write("Type '1.' for Easy"),nl,
+  write("Type '2.' for Medium"),nl,
+  write("Type '3.' for Hard"),nl,
+  write("Type '4.' for Extreme - hint: this will cause longer respond time from the computer"),nl,
+  !,repeat,read(Ans),
+  ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!,
+  assert(difficulty(Ans));fail.
+%This predicate gets a pocket number from the player
+%The number is between 0 and 5
+%If the player chose an empty pocket or invalid number it will prompt a message
+%and let the player try again
 getInput(ChosenPocket):-
+  write("Please choose your pocket (integer between 0 - 5) followed by a period."),nl,
   repeat,read(ChosenPocket),
-  (between1(0,ChosenPocket,5),
-  not(isEmptyPocket(ChosenPocket,human)),!;fail).
+  ((between1(0,ChosenPocket,5);
+  (write("Must be in range [0,5]"),nl,write("Try again!"),nl,fail)),
+  (not(isEmptyPocket(ChosenPocket,human));
+  (write("Cannot choose empty pocket!"),nl,write("Try again!"),nl,fail)),!;
+  fail).
 
 %print the board
 printBoard:-
