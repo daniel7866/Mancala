@@ -310,7 +310,7 @@ getCurrentState(Acc,List,Pos):- % using accumulator
 % pos and BoardSidePocket are _ becase we don't care about them
 % ---------------------------------------------------------------------
 setBoard(_-_-[]-CurrPlayer):-
-  retractall(turn(_)),
+  retractall(turn(_)),retractall(winner(_)),
   assert(turn(CurrPlayer)).
 setBoard(_-_-[Pos-Player-NumOfStones|Tail]-CurrPlayer):-
   retractall(pocket(Pos,Player,_)),
@@ -366,16 +366,27 @@ staticVal(State,Val):-
   Val is CpuBank-HumanBank,
   setBoard(OriginalState).
 
+staticValGameEnded(State,Val):-
+  getCurrentState(OriginalState),
+  setBoard(State),
+  gameEnded,
+  pocket(bank,human,HumanBank),
+  pocket(bank,cpu,CpuBank),
+  Val is CpuBank-HumanBank,
+  setBoard(OriginalState).
+
 runAlphaBeta(Depth,GoodState,GoodVal):-
   getCurrentState(_-_-State-Player),
   alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),
   setBoard(_-_-State-Player).
+
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
   Depth>0,
   moves(_-_-State-Player,StateList),StateList\=[],!, % if game ended the stateList is empty list
   Depth1 is Depth-1,
   boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
-  staticVal(_-_-State-Player,Val).
+  ((StateList==[],staticValGameEnded(_-_-State-Player,Val));
+  staticVal(_-_-State-Player,Val)).
 
 boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
   alphaBeta(Depth,State,Alpha,Beta,_,Val),
