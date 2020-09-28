@@ -423,22 +423,33 @@ betterOf(_,_,State1,Val1,State1,Val1).
 
 
 % ---------------------------------------------------------------------
-%-------------------------------GUI------------------------------------
+% --------------User Interface and main game loop----------------------
 % ---------------------------------------------------------------------
 
+%mainGameLoop is the "main menu" of the game:
+%it starts off by displaying a welcome message to the player which asks
+%the player if he wants to view the manual for the game
+%then player is asked to choose between two game modes:
+% player vs cpu
+% or an automatic game(computer vs itself)
 mainGameLoop:-
-  welcomeMessage,
-  chooseDifficulty,
+  welcomeMessage,nl,nl,
+  chooseGameMode(GameMode),nl,nl,
+  (((GameMode==1),playerVsCpuGame);
+    (GameMode==2),cpuVsCpuGame).
+
+%the automatic game:
+cpuVsCpuGame:-
   start,%initialize the board
   printBoard,
-  mainGameLoop1,
-  cleanUp, % after we are done playing - clean memory
-  write("Do you want to play again? (y/n)"),nl,!,
-  repeat,read(Ans),
-  ((Ans=='y',!,nl,nl,nl,mainGameLoop);
-   (Ans=='n',!,write("Thank you for playing!"),nl,write("Good Bye!"),nl,!);
-   (write("You have to choose between y or no"),nl,fail)).
-mainGameLoop1:-
+  cpuVsCpuGameLoop,%go to the desired gameMode loop
+  cleanUp.%after the game is over - retract all
+
+%This predicate - cpuVsCpuGameLoop has 3 implementations:
+% 1. game has ended - announce the winner
+% 2. it's the cpu's turn - run alphaBeta and make the move automatically
+% 3. it's the human player's turn - run alphaBeta and make the move automatically.
+cpuVsCpuGameLoop:-
   gameEnded,!,write("Game over!"),nl,winner(WINNER),
   (((WINNER == tie),
   write("It's a tie!"),nl);
@@ -447,15 +458,66 @@ mainGameLoop1:-
   write(" stones"),nl,
   write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
   write(" stones"),nl.
-mainGameLoop1:-
+
+cpuVsCpuGameLoop:-
+  turn(cpu),!,write("Cpu's turn"),nl,
+  runAlphaBeta(3,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("cpu chose pocket "),write(Pocket),nl,sleep(2),
+  printBoard,cpuVsCpuGameLoop.
+
+cpuVsCpuGameLoop:-
+  turn(human),!,write("Human's turn"),nl,
+  runAlphaBeta(3,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("human chose pocket "),write(Pocket),nl,sleep(2),
+  printBoard,cpuVsCpuGameLoop.
+
+
+playerVsCpuGame:-
+  chooseDifficulty,
+  start,%initialize the board
+  printBoard,
+  playerVsCpuGameLoop,
+  cleanUp, % after we are done playing - clean memory
+  write("Do you want to play again? (y/n)"),nl,!,
+  repeat,read(Ans),
+  ((Ans=='y',!,nl,nl,nl,mainGameLoop); % if the player wants to play again - go to the main menu of the game
+   (Ans=='n',!,write("Thank you for playing!"),nl,write("Good Bye!"),nl,!);
+   (write("You have to choose between y or no"),nl,fail)).  % if player input is invalid
+
+%This predicate - playerVsCpuGameLoop has 3 implementations:
+% 1. game has ended - announce the winner
+% 2. it's the cpu's turn - run alphaBeta and make the move automatically
+% 3. it's the human player's turn - get the desired move from him as an input and make the move.
+playerVsCpuGameLoop:-
+  gameEnded,!,write("Game over!"),nl,winner(WINNER), % if the game ended - announce the winner
+  (((WINNER == tie),
+  write("It's a tie!"),nl);
+  write("The winner is "),write(WINNER),nl),
+  write("Cpu got "),pocket(bank,cpu,CPU_SCORE),write(CPU_SCORE),
+  write(" stones"),nl,
+  write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
+  write(" stones"),nl.
+
+playerVsCpuGameLoop:-
   turn(cpu),!,write("Cpu's turn"),nl,difficulty(DepthForAlphaBeta),
   runAlphaBeta(DepthForAlphaBeta,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
   write("cpu chose pocket "),write(Pocket),nl,sleep(3),
-  printBoard,mainGameLoop1.
-mainGameLoop1:-
+  printBoard,playerVsCpuGameLoop.
+playerVsCpuGameLoop:-
   turn(human),!,write("It's your turn"),nl,
   getInput(ChosenPocket),move(ChosenPocket,human),
-  printBoard,mainGameLoop1.
+  printBoard,playerVsCpuGameLoop.
+
+% In this game there are two game modes:
+% You vs the computer - gameMode 1
+% An automatic game - the computer vs itself - gameMode 2
+chooseGameMode(GameMode):-
+  write("What game mode do you like want? (1. or 2.)"),nl,
+  write("1. You vs Computer"),nl,
+  write("2. Computer vs Computer - an automatic game"),nl,
+  repeat,read(GameMode),
+  ((GameMode == 1,!;GameMode == 2,!);
+   write("Choose between 1. or 2."),nl,fail).
 
 welcomeMessage:-
   write("Welcome to mancala! made by Daniel Fogel"),nl,
@@ -463,8 +525,9 @@ welcomeMessage:-
   repeat,read(Ans),
   ((Ans=='y',printManual,nl,!);
    (Ans=='n',!);
-   (write("You have to choose between y or n"),nl,fail)).
+   (write("You have to choose between y or n"),nl,fail)). % if player input is invalid
 
+% This predicate prints an instructions' manual of the game
 printManual:-
   nl,nl,write("Game manual:"),nl,
   write("Mancala is a two person board game"),nl,
@@ -482,6 +545,8 @@ printManual:-
   write("Captured: If your last stone landed in an empty pocket and there are stones in the same pocket on the opposite side"),nl,
   write("you'll take all of them to your bank!"),nl.
 
+% Player chooses difficulty for the game:
+% The difficulty will be the depth for the alphaBeta search
 chooseDifficulty:-
   write("Please choose your difficulty"),nl,
   write("Type '1.' for Easy"),nl,
@@ -489,7 +554,7 @@ chooseDifficulty:-
   write("Type '3.' for Hard"),nl,
   write("Type '4.' for Extreme  ~warning: this will cause longer respond time from the computer"),nl,
   !,repeat,read(Ans),
-  ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!,
+  ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!, % if player input is invalid
   assert(difficulty(Ans));fail.
 %This predicate gets a pocket number from the player
 %The number is between 0 and 5
@@ -502,9 +567,11 @@ getInput(ChosenPocket):-
   (((not(integer(ChosenPocket));not(between1(0,ChosenPocket,5))),
    write("Must be in range [0,5]"),nl,write("Try again!"),nl);
   (isEmptyPocket(ChosenPocket,human),
-   write("Cannot choose empty pocket!"),nl,write("Try again!"),nl))),!.
+   write("Cannot choose empty pocket!"),nl,write("Try again!"),nl))),!. % if player input is invalid
 
-%print the board
+% ---------------------------------------------------------------------
+% --------------Print the board----------------------------------------
+% ---------------------------------------------------------------------
 printBoard:-
   printBoardNames(cpu,0),
   printBoardLines(0),
@@ -551,6 +618,7 @@ printBoardValues(Player,N):-
   N1 is N+1,
   printBoardValues(Player,N1).
 
+% the banks are printed seperatley in their own rows
 printBanks:-
   pocket(bank,cpu,CPUBANK),
   pocket(bank,human,HUMANBANK),
