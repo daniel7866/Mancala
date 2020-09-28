@@ -1,6 +1,7 @@
 % ---------------------------------------------------------------------
-%              20596 - Prolog & Artificial Intelligence
-%                      Maman 17 - Final Project
+%              20596 - Prolog And Artificial Intelligence
+%               Maman 17 - Final Project - Mancala game
+%                     AI using alphaBeta
 % ---------------------------------------------------------------------
 % Programmer:
 %   Name: Daniel Fogel
@@ -13,11 +14,12 @@
 % with AlphaBeta search algorithm.
 % ---------------------------------------------------------------------
 % Synopsis:
-%
+% To run the game - call the predicate MainGameLoop
+% This is the "main method" of the game
 % ---------------------------------------------------------------------
 
 % ---------------------------------------------------------------------
-% internally used dynamic predicates & data structures:
+% dynamic predicates:
 % ---------------------------------------------------------------------
 :- dynamic pocket/3. % pocket(pos, player, stones count) - represents a
 % specific pocekt in the board game.
@@ -394,6 +396,7 @@ boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
 
 goodEnough(_,[],_,_,State,Val,State,Val). % no moves - game ended
 
+%pruning
 goodEnough(_,_,Alpha,Beta,State,Val,State,Val):-
   maxToMove(State),Val>Beta,!; % i am a maximum - max played to reach State
   minToMove(State),Val<Alpha,!.% i am a minimum - min played to reach State
@@ -512,7 +515,7 @@ playerVsCpuGameLoop:-
 % You vs the computer - gameMode 1
 % An automatic game - the computer vs itself - gameMode 2
 chooseGameMode(GameMode):-
-  write("What game mode do you like want? (1. or 2.)"),nl,
+  write("What game mode do you want? (1 or 2) followed by a period and press Enter"),nl,
   write("1. You vs Computer"),nl,
   write("2. Computer vs Computer - an automatic game"),nl,
   repeat,read(GameMode),
@@ -521,11 +524,11 @@ chooseGameMode(GameMode):-
 
 welcomeMessage:-
   write("Welcome to mancala! made by Daniel Fogel"),nl,
-  write("Would you like to view the game manual?(y/n)"),nl,
+  write("Would you like to view the game manual? (y or n) followed by a period and press Enter"),nl,
   repeat,read(Ans),
   ((Ans=='y',printManual,nl,!);
    (Ans=='n',!);
-   (write("You have to choose between y or n"),nl,fail)). % if player input is invalid
+   (write("You have to choose between y or n followed by a period and press Enter"),nl,fail)). % if player input is invalid
 
 % This predicate prints an instructions' manual of the game
 printManual:-
@@ -548,7 +551,7 @@ printManual:-
 % Player chooses difficulty for the game:
 % The difficulty will be the depth for the alphaBeta search
 chooseDifficulty:-
-  write("Please choose your difficulty"),nl,
+  write("Please choose your difficulty (1 2 3 or 4) followed by a period and press Enter"),nl,
   write("Type '1.' for Easy"),nl,
   write("Type '2.' for Medium"),nl,
   write("Type '3.' for Hard"),nl,
@@ -561,7 +564,7 @@ chooseDifficulty:-
 %If the player chose an empty pocket or invalid number it will prompt a message
 %and let the player try again
 getInput(ChosenPocket):-
-  write("Please choose your pocket (integer between 0 - 5) followed by a period."),nl,
+  write("Please choose your pocket (integer between 0 - 5) followed by a period and press Enter."),nl,
   repeat,read(ChosenPocket),
   not(
   (((not(integer(ChosenPocket));not(between1(0,ChosenPocket,5))),
