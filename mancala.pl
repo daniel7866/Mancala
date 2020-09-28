@@ -444,16 +444,25 @@ mainGameLoop:-
 %the automatic game:
 cpuVsCpuGame:-
   start,%initialize the board
+  nl,write("Game is being played, writing it to a file called 'automaticGame'..."),nl,
+  tell(automaticGame),
   printBoard,
   cpuVsCpuGameLoop,%go to the desired gameMode loop
-  cleanUp.%after the game is over - retract all
+  cleanUp,%after the game is over - retract all
+  told,write("Game is done! You can view the file 'automaticGame' in your game folder."),nl,
+  write("Do you want to restart? (y/n) followed by a period and press Enter"),nl,
+  !,repeat,read(Ans),
+  ((Ans=='y',!,nl,nl,nl,mainGameLoop); % if the player wants to play again - go to the main menu of the game
+   (Ans=='n',!,nl,write("Good Bye!"),nl,!);
+   (write("You have to choose between y or no"),nl,fail)).  % if player input is invalid
+
 
 %This predicate - cpuVsCpuGameLoop has 3 implementations:
 % 1. game has ended - announce the winner
 % 2. it's the cpu's turn - run alphaBeta and make the move automatically
 % 3. it's the human player's turn - run alphaBeta and make the move automatically.
 cpuVsCpuGameLoop:-
-  gameEnded,!,write("Game over!"),nl,winner(WINNER),
+  gameEnded,!,printBoard,write("Game over!"),nl,winner(WINNER),
   (((WINNER == tie),
   write("It's a tie!"),nl);
   write("The winner is "),write(WINNER),nl),
@@ -464,14 +473,14 @@ cpuVsCpuGameLoop:-
 
 cpuVsCpuGameLoop:-
   turn(cpu),!,write("Cpu's turn"),nl,
-  runAlphaBeta(3,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
-  write("cpu chose pocket "),write(Pocket),nl,sleep(2),
+  runAlphaBeta(2,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("cpu chose pocket "),write(Pocket),nl,
   printBoard,cpuVsCpuGameLoop.
 
 cpuVsCpuGameLoop:-
   turn(human),!,write("Human's turn"),nl,
-  runAlphaBeta(3,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
-  write("human chose pocket "),write(Pocket),nl,sleep(2),
+  runAlphaBeta(2,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  write("human chose pocket "),write(Pocket),nl,
   printBoard,cpuVsCpuGameLoop.
 
 
@@ -492,7 +501,7 @@ playerVsCpuGame:-
 % 2. it's the cpu's turn - run alphaBeta and make the move automatically
 % 3. it's the human player's turn - get the desired move from him as an input and make the move.
 playerVsCpuGameLoop:-
-  gameEnded,!,write("Game over!"),nl,winner(WINNER), % if the game ended - announce the winner
+  gameEnded,!,printBoard,write("Game over!"),nl,winner(WINNER), % if the game ended - announce the winner
   (((WINNER == tie),
   write("It's a tie!"),nl);
   write("The winner is "),write(WINNER),nl),
