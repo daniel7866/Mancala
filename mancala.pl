@@ -175,7 +175,7 @@ move(Pos,BoardSide):-
   validPocket(Pos,BoardSide),
   emptyCurrPocket(Pos,BoardSide,NumOfStones),
   dir(Pos,BoardSide,NextPos,NextBoardSide), % get the next pocket
-  move(NextPos,NextBoardSide,NumOfStones). % put one stone in each of the next pockets
+  move(NextPos,NextBoardSide,NumOfStones),!. % put one stone in each of the next pockets
 
 move(_,_,0):- % when we are out of stones - we stop
   switchTurns.
@@ -200,13 +200,13 @@ move(Pos,BoardSide,NumOfStones):-
 
 /*************** switch turns - human to cpu ***************/
 switchTurns:-
-  turn(human),
+  turn(human),!,
   retract(turn(human)),
   assert(turn(cpu)).
 
 /*************** switch turns - cpu to human ***************/
 switchTurns:-
-  turn(cpu),
+  turn(cpu),!,
   retract(turn(cpu)),
   assert(turn(human)).
 
@@ -369,13 +369,13 @@ staticVal(State,Val):-
   setBoard(OriginalState).
 
 staticValGameEnded(State,Val):-
-  getCurrentState(OriginalState),
+  %getCurrentState(OriginalState),
   setBoard(State),
   gameEnded,
   pocket(bank,human,HumanBank),
   pocket(bank,cpu,CpuBank),
-  Val is CpuBank-HumanBank,
-  setBoard(OriginalState).
+  Val is CpuBank-HumanBank.
+  %setBoard(OriginalState).
 
 runAlphaBeta(Depth,GoodState,GoodVal):-
   getCurrentState(_-_-State-Player),
@@ -593,7 +593,7 @@ printBoard:-
   printBoardNames(human,0),
   printBoardLines(0),
   printBoardValues(human,0),
-  printBoardLines(0),
+  printBoardLines(0),!,
   nl,nl,nl,nl,nl,nl,nl,nl,nl,
   nl,nl,nl,nl,nl,nl,nl,nl,nl.
   %nl,nl,nl,nl,nl,nl,nl,nl,nl.
