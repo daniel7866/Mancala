@@ -49,7 +49,7 @@ start:-
   assert(turn(Player)).  % to choose the player that play first
 
 % initializing the 5 pockets of each player in the board:
-start(-1). % stop after 5 pockets for each player
+start(-1):-!. % stop after 5 pockets for each player
 start(Pos):-
   assert(pocket(Pos,human,4)), % game starts with 4 stones
   assert(pocket(Pos,cpu,4)), % in each pocket for each player
@@ -290,21 +290,21 @@ insert(X,List,[X|List]). % just a simple insertion to a list
 % ---------------------------------------------------------------------
 
 getCurrentState(_-_-List-Player):-
-  getCurrentState([],List1,5), % overloading
+  getCurrentState([],List1,5),!, % overloading
   pocket(bank,cpu,CpuBank),
   pocket(bank,human,HumanBank),
   insert(bank-cpu-CpuBank,List1,List2), % insert the banks as well
   insert(bank-human-HumanBank,List2,List),
-  turn(Player). % who plays now in this state
+  turn(Player),!. % who plays now in this state
 
-getCurrentState(Acc,Acc,-1). % after done with all pockets from 5 to 0
+getCurrentState(Acc,Acc,-1):-!. % after done with all pockets from 5 to 0
 getCurrentState(Acc,List,Pos):- % using accumulator
   pocket(Pos,cpu,CpuNumOfStones),
   pocket(Pos,human,HumanNumOfStones),
   insert(Pos-cpu-CpuNumOfStones,Acc,Acc1),
   insert(Pos-human-HumanNumOfStones,Acc1,Acc2),
   NextPos is Pos-1,
-  getCurrentState(Acc2,List,NextPos).
+  getCurrentState(Acc2,List,NextPos),!.
 
 % ---------------------------------------------------------------------
 % set current board from a state given in a list:
@@ -336,7 +336,7 @@ moves(State,PossibleMoves):-
 % after done checking all pockets from 5 to 0
 moves(_,PossibleMoves,PossibleMoves,-1):-!.
 moves(State,Acc,PossibleMoves,Pos):-
-  move(Pos,BoardSide), % change the board and get the current state
+  move(Pos,BoardSide),!, % change the board and get the current state
   getCurrentState(_-_-AfterMove-Player),
   setBoard(State), % reset the board before the change
   insert(Pos-BoardSide-AfterMove-Player,Acc,Acc1), % write the board and the pos that led to it
@@ -378,23 +378,23 @@ staticValGameEnded(State,Val):-
   %setBoard(OriginalState).
 
 runAlphaBeta(Depth,GoodState,GoodVal):-
-  getCurrentState(_-_-State-Player),
-  alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),
-  setBoard(_-_-State-Player).
+  getCurrentState(_-_-State-Player),!,
+  alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),!,
+  setBoard(_-_-State-Player),!.
 
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
   (Depth>0,
   moves(_-_-State-Player,StateList),StateList\=[],!, % if game ended the stateList is empty list
-  Depth1 is Depth-1,
+  Depth1 is Depth-1,!,
   boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val));
-  ((StateList==[],staticValGameEnded(_-_-State-Player,Val));
-  staticVal(_-_-State-Player,Val)).
+  ((StateList==[],!,staticValGameEnded(_-_-State-Player,Val));
+  staticVal(_-_-State-Player,Val),!).
 
 boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
   alphaBeta(Depth,State,Alpha,Beta,_,Val),
   goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal).
 
-goodEnough(_,[],_,_,State,Val,State,Val). % no moves - game ended
+goodEnough(_,[],_,_,State,Val,State,Val):-!. % no moves - game ended
 
 %pruning
 goodEnough(_,_,Alpha,Beta,State,Val,State,Val):-
@@ -485,7 +485,7 @@ cpuVsCpuGameLoop:-
 
 
 playerVsCpuGame:-
-  chooseDifficulty,
+  chooseDifficulty,nl,write("The depth of search is "),difficulty(D),write(D),nl,
   start,%initialize the board
   printBoard,
   playerVsCpuGameLoop,
@@ -564,10 +564,11 @@ chooseDifficulty:-
   write("Type '1.' for Easy"),nl,
   write("Type '2.' for Medium"),nl,
   write("Type '3.' for Hard"),nl,
-  write("Type '4.' for Extreme  ~warning: this will cause longer respond time from the computer"),nl,
+  write("Type '4.' for Extreme"),nl,
   !,repeat,read(Ans),
   ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!, % if player input is invalid
-  assert(difficulty(Ans));fail.
+  (((Ans == 1, Depth is 1);(Ans == 2, Depth is 2);(Ans == 3, Depth is 6);(Ans == 4, Depth is 8)),
+  assert(difficulty(Depth)));fail.
 %This predicate gets a pocket number from the player
 %The number is between 0 and 5
 %If the player chose an empty pocket or invalid number it will prompt a message
