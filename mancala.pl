@@ -361,12 +361,12 @@ maxToMove(_-cpu-_-_). % if cpu played last - he is a maximum player
 % cpu wants to have more stones than human - max player.
 % human wants to have more stones than cpu - smaller value = min player.
 staticVal(State,Val):-
-  getCurrentState(OriginalState),
+  %getCurrentState(OriginalState),
   setBoard(State),
   pocket(bank,human,HumanBank),
   pocket(bank,cpu,CpuBank),
-  Val is CpuBank-HumanBank,
-  setBoard(OriginalState).
+  Val is CpuBank-HumanBank.
+  %setBoard(OriginalState).
 
 staticValGameEnded(State,Val):-
   %getCurrentState(OriginalState),
