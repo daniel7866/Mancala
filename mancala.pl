@@ -485,10 +485,10 @@ cpuVsCpuGameLoop:-
 
 
 playerVsCpuGame:-
-  chooseDifficulty,nl,write("The depth of search is "),difficulty(D),write(D),nl,
+  chooseDifficulty,nl,
   start,%initialize the board
   printBoard,
-  playerVsCpuGameLoop,
+  playerVsCpuGameLoop, % start the game
   cleanUp, % after we are done playing - clean memory
   write("Do you want to play again? (y/n)"),nl,!,
   repeat,read(Ans),
@@ -510,13 +510,20 @@ playerVsCpuGameLoop:-
   write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
   write(" stones"),nl.
 
+% if it's the turn of cpu - run alphaBeta
 playerVsCpuGameLoop:-
-  turn(cpu),!,write("Cpu's turn"),nl,difficulty(DepthForAlphaBeta),
-  runAlphaBeta(DepthForAlphaBeta,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  turn(cpu),!,
+  write("Cpu's turn"),nl,
+  getDifficultyDepth(DepthForAlphaBeta), % get the depth for alphaBeta search
+  runAlphaBeta(DepthForAlphaBeta,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide), % get alphaBeta's move recommendation and act on it
   write("cpu chose pocket "),write(Pocket),nl,sleep(3),
-  printBoard,playerVsCpuGameLoop.
+  printBoard,
+  playerVsCpuGameLoop.
+
+% if it's the turn of human player - read from him
 playerVsCpuGameLoop:-
-  turn(human),!,write("It's your turn"),nl,
+  turn(human),!,
+  write("It's your turn"),nl,
   getInput(ChosenPocket),move(ChosenPocket,human),
   printBoard,playerVsCpuGameLoop.
 
@@ -526,7 +533,7 @@ playerVsCpuGameLoop:-
 chooseGameMode(GameMode):-
   write("What game mode do you want? (1 or 2) followed by a period and press Enter"),nl,
   write("1. You vs Computer"),nl,
-  write("2. Computer vs Computer - an automatic game"),nl,
+  write("2. Computer vs Computer - an automatic game which is saved to a text file"),nl,
   repeat,read(GameMode),
   ((GameMode == 1,!;GameMode == 2,!);
    write("Choose between 1. or 2."),nl,fail).
@@ -567,8 +574,20 @@ chooseDifficulty:-
   write("Type '4.' for Extreme"),nl,
   !,repeat,read(Ans),
   ((between1(1,Ans,4);(write("Type a number between 1 and 4 followed by a period"),nl,fail))),!, % if player input is invalid
-  (((Ans == 1, Depth is 1);(Ans == 2, Depth is 2);(Ans == 3, Depth is 6);(Ans == 4, Depth is 8)),
-  assert(difficulty(Depth)));fail.
+  (((Ans == 1, Difficulty = easy);
+  (Ans == 2, Difficulty = medium);
+  (Ans == 3, Difficulty = hard);
+  (Ans == 4, Difficulty = extreme)),
+  assert(difficulty(Difficulty)));fail.
+
+getDifficultyDepth(Depth):-
+  difficulty(Lvl),
+  (
+  (Lvl = easy,Depth is 1);
+  (Lvl = medium,Depth is 2);
+  (Lvl = hard,Depth is 4);
+  (Lvl = extreme,Depth is 8)
+  ).
 %This predicate gets a pocket number from the player
 %The number is between 0 and 5
 %If the player chose an empty pocket or invalid number it will prompt a message
