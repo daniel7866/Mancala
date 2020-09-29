@@ -327,6 +327,7 @@ setBoard(_-_-[Pos-Player-NumOfStones|Tail]-CurrPlayer):-
 moves(State,PossibleMoves):-
   turn(Player),
   getCurrentState(OriginalState), % get the state before any changes are made
+  setBoard(State),
   moves(State,[],PossibleMoves,5), % overloading (use accumulator)
   setBoard(OriginalState),!, % reset the board as it was before
   retractall(turn(_)),
@@ -335,7 +336,6 @@ moves(State,PossibleMoves):-
 % after done checking all pockets from 5 to 0
 moves(_,PossibleMoves,PossibleMoves,-1):-!.
 moves(State,Acc,PossibleMoves,Pos):-
-  setBoard(State),
   move(Pos,BoardSide), % change the board and get the current state
   getCurrentState(_-_-AfterMove-Player),
   setBoard(State), % reset the board before the change
@@ -383,10 +383,10 @@ runAlphaBeta(Depth,GoodState,GoodVal):-
   setBoard(_-_-State-Player).
 
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
-  Depth>0,
+  (Depth>0,
   moves(_-_-State-Player,StateList),StateList\=[],!, % if game ended the stateList is empty list
   Depth1 is Depth-1,
-  boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val);
+  boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val));
   ((StateList==[],staticValGameEnded(_-_-State-Player,Val));
   staticVal(_-_-State-Player,Val)).
 
