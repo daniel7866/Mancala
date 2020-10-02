@@ -488,13 +488,7 @@ playerVsCpuGame:-
   chooseDifficulty,nl,
   start,%initialize the board
   printBoard,
-  playerVsCpuGameLoop, % start the game
-  cleanUp, % after we are done playing - clean memory
-  write("Do you want to play again? (y/n)"),nl,!,
-  repeat,read(Ans),
-  ((Ans=='y',!,nl,nl,nl,mainGameLoop); % if the player wants to play again - go to the main menu of the game
-   (Ans=='n',!,write("Thank you for playing!"),nl,write("Good Bye!"),nl,!);
-   (write("You have to choose between y or no"),nl,fail)).  % if player input is invalid
+  playerVsCpuGameLoop. % start the game
 
 %This predicate - playerVsCpuGameLoop has 3 implementations:
 % 1. game has ended - announce the winner
@@ -512,7 +506,14 @@ playerVsCpuGameLoop:-
   write("Human player got "),pocket(bank,human,HUMAN_SCORE),write(HUMAN_SCORE),
   write(" stones"),nl,
   difficulty(Difficulty),
-  write("You have played the "),write(Difficulty),write(" difficulty"),nl,nl.
+  write("You have played the "),write(Difficulty),write(" difficulty"),nl,nl,
+
+  cleanUp, % after we are done playing - clean memory
+  write("Do you want to play again? (y/n)"),nl,!,
+  repeat,read(Ans),
+  ((Ans=='y',!,nl,nl,nl,mainGameLoop); % if the player wants to play again - go to the main menu of the game
+   (Ans=='n',!,write("Thank you for playing!"),nl,write("Good Bye!"),nl,!);
+   (write("You have to choose between y or no"),nl,fail)).  % if player input is invalid
 
 % if it's the turn of cpu - run alphaBeta
 playerVsCpuGameLoop:-
@@ -528,8 +529,10 @@ playerVsCpuGameLoop:-
 playerVsCpuGameLoop:-
   turn(human),!,
   write("It's your turn"),nl,
-  getInput(ChosenPocket),move(ChosenPocket,human),
-  printBoard,playerVsCpuGameLoop.
+  getInput(PlayerInput),((PlayerInput=='stop',write("Game stopped, going back to startup screen..."),cleanUp,nl,nl,mainGameLoop)
+  ;
+  (move(PlayerInput,human),
+  printBoard,playerVsCpuGameLoop)).
 
 % In this game there are two game modes:
 % You vs the computer - gameMode 1
@@ -597,13 +600,13 @@ getDifficultyDepth(Depth):-
 %If the player chose an empty pocket or invalid number it will prompt a message
 %and let the player try again
 getInput(ChosenPocket):-
-  write("Please choose your pocket (integer between 0 - 5) followed by a period and press Enter."),nl,
-  repeat,read(ChosenPocket),
+  write("Please choose your pocket (integer between 0 - 5 or 'stop' for stopping the game) followed by a period and press Enter."),nl,
+  repeat,read(ChosenPocket),((ChosenPocket=='stop');
   not(
   (((not(integer(ChosenPocket));not(between1(0,ChosenPocket,5))),
    write("Must be in range [0,5]"),nl,write("Try again!"),nl);
   (isEmptyPocket(ChosenPocket,human),
-   write("Cannot choose empty pocket!"),nl,write("Try again!"),nl))),!. % if player input is invalid
+   write("Cannot choose empty pocket!"),nl,write("Try again!"),nl)))),!. % if player input is invalid
 
 % ---------------------------------------------------------------------
 % --------------Print the board----------------------------------------
