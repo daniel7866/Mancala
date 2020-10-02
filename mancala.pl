@@ -436,9 +436,9 @@ betterOf(_,_,State1,Val1,State1,Val1).
 % player vs cpu
 % or an automatic game(computer vs itself)
 mainGameLoop:-
-  write("Welcome to mancala! made by Daniel Fogel"),nl,
-  write("Would you like to view the game manual? (y or n) followed by a period and press Enter"),nl,
-  write("If you wish to quit the game - you can always do it from here simply by typing 'exit' followed by a period and press Enter"),nl,
+  write("Welcome to mancala! made by Daniel Fogel"),nl,nl,
+  write("Would you like to view a manual and a tutorial of the game? (y or n) followed by a period and press Enter"),nl,nl,
+  write("If you wish to quit the game - you can always do it from here simply by typing 'exit' followed by a period and press Enter"),nl,nl,
   repeat,read(Ans),
   ((Ans=='y',printManual,nl,!);
    (Ans=='n',!);
@@ -559,6 +559,7 @@ printManual:-
   write("Mancala is a two person board game"),nl,
   write("This game has a board with two sides - one for each player"),nl,
   write("Each player has 6 pockets: pockets 0-5 and a bank"),nl,
+  write("At the beginning - all pockets have four stones and the banks are empty"),nl,
   write("The goal is to get more stones in your bank to beat the other player"),nl,
   write("The game is finished when one row is empty,"),nl,
   write("then the player in the opposite row collects all stones remaining in his row."),nl,
@@ -569,8 +570,47 @@ printManual:-
   write("Speacial moves:"),nl,
   write("Free turn: If your last stone landed in your bank - you get a free turn!"),nl,
   write("Captured: If your last stone landed in an empty pocket and there are stones in the same pocket on the opposite side"),nl,
-  write("you'll take all of them to your bank!"),nl.
+  write("you'll take all of them to your bank!"),nl,nl,
 
+  write("When it's your turn to play - you can type 'stop' to stop playing and go back to startup screen."),nl,
+  write("On startup screen - you can type 'exit' to quit the game."),nl,nl,
+  write("Remember: Every time you are being asked to type you need to type your selection followed by a period and press Enter"),nl,nl,
+  write("Would you like to view a tutorial on how to play? (y/n)"),nl,
+  !,repeat,read(Ans),
+  ((Ans=='n');
+   (Ans=='y',viewTutorial);
+   (write("You have to choose between y or n followed by a period and press Enter"),fail)).
+
+%This predicate will show the user a tutorial on how to play
+viewTutorial:-
+  start,
+  write("This is your board:"),nl,
+  printBoard,
+  write("Your pockets are on the bottom, and your opponent's are on the top"),nl,
+  (turn(human);switchTurns),
+  write("This is your turn - to gain extra turn press pocket 2, because that way the last stone will land in your bank"),nl,
+  !,repeat,read(ChosenPocket2),
+  ((ChosenPocket2 is 2);(write("Type 2 followed by a period and press Enter"),nl,fail)),
+  move(2,human),
+  printBoard,
+  write("Great! now you know how to win another turn!"),nl,nl,
+
+
+  write("Now let's teach you how to capture!"),nl,nl,
+  cleanUp,
+  start,(turn(human);switchTurns),
+  sleep(3),
+  emptyCurrPocket(5,human,_),
+  printBoard,
+  write("Pocket 5 in your side of the board is empty, and in the same pocket on your opponent's side there are stones."),nl,
+  write("To gain them all, choose pocket 1 which has 4 stones and that way, the last stone will fall on pocket number 5."),nl,
+  write("And because pocket number 5 is empty, and the opponent's pocket 5 is not, you will take his stones + the one on your side"),nl,
+  write("Choose pocket 1"),nl,
+  !,repeat,read(ChosenPocket1),write("read"),nl,
+  ((ChosenPocket1 is 1);(write("Type 1 followed by a period and press Enter"),nl,fail)),
+  move(1,human),
+  printBoard,
+  nl,write("Great! you are ready to play!"),nl,nl,nl,cleanUp.
 % Player chooses difficulty for the game:
 % The difficulty will be the depth for the alphaBeta search
 chooseDifficulty:-
