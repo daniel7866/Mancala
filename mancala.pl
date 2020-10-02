@@ -436,10 +436,18 @@ betterOf(_,_,State1,Val1,State1,Val1).
 % player vs cpu
 % or an automatic game(computer vs itself)
 mainGameLoop:-
-  welcomeMessage,nl,nl,
+  write("Welcome to mancala! made by Daniel Fogel"),nl,
+  write("Would you like to view the game manual? (y or n) followed by a period and press Enter"),nl,
+  write("If you wish to quit the game - you can always do it from here simply by typing 'exit' followed by a period and press Enter"),nl,
+  repeat,read(Ans),
+  ((Ans=='y',printManual,nl,!);
+   (Ans=='n',!);
+   (Ans=='exit',!);
+   (write("You have to choose between y or n followed by a period and press Enter"),nl,fail)), % if player input is invalid
+   (((Ans=='exit'),write("GoodBye!"),nl);
   chooseGameMode(GameMode),nl,nl,
   (((GameMode==1),playerVsCpuGame);
-    (GameMode==2),cpuVsCpuGame).
+    (GameMode==2),cpuVsCpuGame)).
 
 %the automatic game:
 cpuVsCpuGame:-
@@ -544,14 +552,6 @@ chooseGameMode(GameMode):-
   repeat,read(GameMode),
   ((GameMode == 1,!;GameMode == 2,!);
    write("Choose between 1. or 2."),nl,fail).
-
-welcomeMessage:-
-  write("Welcome to mancala! made by Daniel Fogel"),nl,
-  write("Would you like to view the game manual? (y or n) followed by a period and press Enter"),nl,
-  repeat,read(Ans),
-  ((Ans=='y',printManual,nl,!);
-   (Ans=='n',!);
-   (write("You have to choose between y or n followed by a period and press Enter"),nl,fail)). % if player input is invalid
 
 % This predicate prints an instructions' manual of the game
 printManual:-
