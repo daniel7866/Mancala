@@ -16,6 +16,12 @@
 % Synopsis:
 % To run the game - call the predicate MainGameLoop
 % This is the "main method" of the game
+% It will welcome the player and ask him if he wants to view a tutorial
+% as well as selecting the game mode, and the difficulty.
+% There are two game modes: player vs computer
+%                           computer vs computer
+% computer vs computer is an automatic game saved to a text file that
+% the user can view later.
 % ---------------------------------------------------------------------
 
 % ---------------------------------------------------------------------
@@ -267,7 +273,7 @@ gameEnded:-
   gameEnded1, % one row is empty and other row collected
   pocket(bank,human,HumanNumOfStones),
   pocket(bank,cpu,CpuNumOfStones),
-  ((HumanNumOfStones>CpuNumOfStones,assert(winner(human)));
+  ((HumanNumOfStones>CpuNumOfStones,assert(winner(human)));%who has more stones in the bank is the winner
   (HumanNumOfStones<CpuNumOfStones,assert(winner(cpu)));
   (HumanNumOfStones = CpuNumOfStones,assert(winner(tie)))).%no one won - it's a tie
 
@@ -284,9 +290,15 @@ gameEnded1:-
 
 insert(X,List,[X|List]). % just a simple insertion to a list
 % ---------------------------------------------------------------------
-% get current board state in a list:
-% Pos taht led To this state-BoardSidePocket that Led To this State-[pos-boardside-stones|...]-whose turn it is now in this state
-% Pos and BoardSide both= _ because they are unkown
+% get current game state in a list:
+% a game state is made like this:
+% it has the pockets and their values inside a list=List
+% someone pressed on a pocket to get to this state - since we don't know what it is we mark it as _-_
+% two underScores: one for pos and one for boardSide
+% we need those two for the alphaBeta search - so when it looks at a state it knows where it came from
+% and that way it can decide if it's max or min.
+% next we have Plaer = whose turn it is in the game right now
+% so we get: _pos-_boardSide-List-Player
 % ---------------------------------------------------------------------
 
 getCurrentState(_-_-List-Player):-
@@ -356,47 +368,68 @@ moves(State,Acc,PossibleMoves,Pos):- % if pocket is not valid - skip it
 minToMove(_-human-_-_). % if human played last - he is a minimum player
 maxToMove(_-cpu-_-_). % if cpu played last - he is a maximum player
 
-% staticVal gets the huristic value
-% the huristic value is how much stones does cpu has in the bank more than human:
+% staticVal gets the huristic value when the depth is 0 on the alphaBeta
+% the huristic value is how much stones cpu has in the bank more than human:
 % cpu wants to have more stones than human - max player.
-% human wants to have more stones than cpu - smaller value = min player.
+% human wants to have more stones than cpu - smaller value = min player
+% so heuristic value is simply what cpu has in his bank minus what human player has in his bank
 staticVal(State,Val):-
-  %getCurrentState(OriginalState),
   setBoard(State),
   pocket(bank,human,HumanBank),
   pocket(bank,cpu,CpuBank),
   Val is CpuBank-HumanBank.
-  %setBoard(OriginalState).
 
+%This predicate is getting the heuristic value in case the game has ended
+%The heuristic value is simply what is in the cpu's bank minus what is in the human player's bank
+%The reason we need an extra predicate for this case is so the computer won't think it has more moves
+%even if the opponent's row is empty and the game is done and there is more depth to go
 staticValGameEnded(State,Val):-
-  %getCurrentState(OriginalState),
   setBoard(State),
   gameEnded,
   pocket(bank,human,HumanBank),
   pocket(bank,cpu,CpuBank),
   Val is CpuBank-HumanBank.
-  %setBoard(OriginalState).
 
+%This predicate will run alphaBeta
+%It's getting the desired depth to limit alphaBeta(The difficulty of the game will decide on the depth)
+%it's getting back goodState which is the right move to do from the current state of the game
+%it's getting back it's heuristic value as well
 runAlphaBeta(Depth,GoodState,GoodVal):-
-  getCurrentState(_-_-State-Player),!,
-  alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),!,
-  setBoard(_-_-State-Player),!.
+  getCurrentState(_-_-State-Player),!,%get the current state of the game - to run alphaBeta from
+  alphaBeta(Depth,_-_-State-Player,-9999,9999,GoodState,GoodVal),!,%run alphaBeta(alpha=-9999,beta=9999 instead of infinity)
+  setBoard(_-_-State-Player),!.%set the board as it was before the alphaBeta search
 
+%This is the alphaBeta predicate
+%it's parameters are:
+% Depth of search
+% _-_-State-Player = the current node which is the state of the game
+% reminder - a game state is made from:
+%     pos-boardSide that led to current state (underScore because we don't care about them in this matter)
+%     State: the state of the baord = all the pockets and their values
+%     Player: current player's turn in this game state
+% alpha and beta and the goodState and it's value
 alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
-  (Depth>0,
-  moves(_-_-State-Player,StateList),StateList\=[],!, % if game ended the stateList is empty list
+  (Depth>0, % depth left to explore
+  moves(_-_-State-Player,StateList),StateList\=[],!, % StateList is the possible moves from current state = if game ended the stateList is empty list
   Depth1 is Depth-1,!,
-  boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val));
-  ((StateList==[],!,staticValGameEnded(_-_-State-Player,Val));
-  staticVal(_-_-State-Player,Val),!).
+  boundedBest(Depth1,StateList,Alpha,Beta,GoodState,Val)); % work on possible moves
+  ((StateList==[],!,staticValGameEnded(_-_-State-Player,Val));% if StateList is empty - the game has ended(nowhere to go from here)
+  staticVal(_-_-State-Player,Val),!).%if the depth is 0 we are done searching
 
 boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
-  alphaBeta(Depth,State,Alpha,Beta,_,Val),
-  goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal).
+  alphaBeta(Depth,State,Alpha,Beta,_,Val),%run alphaBeta on States list's head
+  goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal).%find the best in the list recursivly
 
-goodEnough(_,[],_,_,State,Val,State,Val):-!. % no moves - game ended
+goodEnough(_,[],_,_,State,Val,State,Val):-!. % no moves - game ended - return current state
 
-%pruning
+%pruning of the alphaBeta tree is in this predicate below:
+%first row: if the state is max, and the value is above Beta
+%           that means that we already got the best we need
+%           and no matter what values are next - we will take this one = Prune the tree here!
+%--------------------------------------------------------------------------------------------
+%second row: if the state is min, and the value is below Alpha
+%           that means that we already got the best we need
+%           and no matter what values are next - we will take this one = Prune the tree here!
 goodEnough(_,_,Alpha,Beta,State,Val,State,Val):-
   maxToMove(State),Val>Beta,!; % i am a maximum - max played to reach State
   minToMove(State),Val<Alpha,!.% i am a minimum - min played to reach State
@@ -444,12 +477,12 @@ mainGameLoop:-
    (Ans=='n',!);
    (Ans=='exit',!);
    (write("You have to choose between y or n followed by a period and press Enter"),nl,fail)), % if player input is invalid
-   (((Ans=='exit'),write("GoodBye!"),nl);
+   (((Ans=='exit'),write("GoodBye!"),nl,sleep(1));
   chooseGameMode(GameMode),nl,nl,
   (((GameMode==1),playerVsCpuGame);
     (GameMode==2),cpuVsCpuGame)).
 
-%the automatic game:
+%This is the game mode for the automatic game:
 cpuVsCpuGame:-
   start,%initialize the board
   nl,write("Game is being played, writing it to a file called 'automaticGame'..."),nl,
@@ -481,17 +514,17 @@ cpuVsCpuGameLoop:-
 
 cpuVsCpuGameLoop:-
   turn(cpu),!,write("Cpu's turn"),nl,
-  runAlphaBeta(2,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  runAlphaBeta(4,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),% on the automatic game the depth is 4
   write("cpu chose pocket "),write(Pocket),nl,
   printBoard,cpuVsCpuGameLoop.
 
 cpuVsCpuGameLoop:-
   turn(human),!,write("Human's turn"),nl,
-  runAlphaBeta(2,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),
+  runAlphaBeta(4,Pocket-BoardSide-_-_,_),move(Pocket,BoardSide),% on the automatic game the depth is 4
   write("human chose pocket "),write(Pocket),nl,
   printBoard,cpuVsCpuGameLoop.
 
-
+%This is the game mode for the player vs cpu
 playerVsCpuGame:-
   chooseDifficulty,nl,
   start,%initialize the board
@@ -537,7 +570,7 @@ playerVsCpuGameLoop:-
 playerVsCpuGameLoop:-
   turn(human),!,
   write("It's your turn"),nl,
-  getInput(PlayerInput),((PlayerInput=='stop',write("Game stopped, going back to startup screen..."),cleanUp,nl,nl,mainGameLoop)
+  getInput(PlayerInput),((PlayerInput=='stop',write("Game stopped, going back to startup screen..."),cleanUp,nl,nl,sleep(2),mainGameLoop)
   ;
   (move(PlayerInput,human),
   printBoard,playerVsCpuGameLoop)).
@@ -554,6 +587,7 @@ chooseGameMode(GameMode):-
    write("Choose between 1. or 2."),nl,fail).
 
 % This predicate prints an instructions' manual of the game
+% At the end of the manual the player will be asked if he wants to view a live tutorial as well
 printManual:-
   nl,nl,write("Game manual:"),nl,
   write("Mancala is a two person board game"),nl,
@@ -581,7 +615,10 @@ printManual:-
    (Ans=='y',viewTutorial);
    (write("You have to choose between y or n followed by a period and press Enter"),fail)).
 
-%This predicate will show the user a tutorial on how to play
+% This predicate will show the user a tutorial on how to play
+%  -It's showing the player how the board works
+%  -It's showing the player how to gain an extra turn
+%  -It's showing the player how to caputre opponent's stones
 viewTutorial:-
   start,
   write("This is your board:"),nl,
@@ -595,7 +632,7 @@ viewTutorial:-
   printBoard,
   write("Great! now you know how to win another turn!"),nl,nl,
 
-
+  %next stage in the tutorial - how to capture opponent's stones
   write("Now let's teach you how to capture!"),nl,nl,
   cleanUp,
   start,(turn(human);switchTurns),
@@ -611,6 +648,8 @@ viewTutorial:-
   move(1,human),
   printBoard,
   nl,write("Great! you are ready to play!"),nl,nl,nl,cleanUp.
+
+
 % Player chooses difficulty for the game:
 % The difficulty will be the depth for the alphaBeta search
 chooseDifficulty:-
@@ -627,6 +666,7 @@ chooseDifficulty:-
   (Ans == 4, Difficulty = extreme)),
   assert(difficulty(Difficulty)));fail.
 
+%This predicate will get the depth for alphaBeta search from the difficulty the player has chosen
 getDifficultyDepth(Depth):-
   difficulty(Lvl),
   (
@@ -635,7 +675,7 @@ getDifficultyDepth(Depth):-
   (Lvl = hard,Depth is 4);
   (Lvl = extreme,Depth is 8)
   ).
-%This predicate gets a pocket number from the player
+%This predicate gets a pocket number from the player - or stops the game if the player wishes to do so
 %The number is between 0 and 5
 %If the player chose an empty pocket or invalid number it will prompt a message
 %and let the player try again
