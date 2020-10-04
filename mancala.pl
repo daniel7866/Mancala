@@ -1,7 +1,11 @@
 % ---------------------------------------------------------------------
 %              20596 - Prolog And Artificial Intelligence
 %               Maman 17 - Final Project - Mancala game
-%                     AI using alphaBeta
+%                     AI using alphaBeta algorithm
+%                       Written in SWI Prolog
+%              My Computer Specs:
+%                 Processor: i5 8250U 1.6GHZ
+%                 RAM:      8GB
 % ---------------------------------------------------------------------
 % Programmer:
 %   Name: Daniel Fogel
@@ -295,8 +299,7 @@ insert(X,List,[X|List]). % just a simple insertion to a list
 % it has the pockets and their values inside a list=List
 % someone pressed on a pocket to get to this state - since we don't know what it is we mark it as _-_
 % two underScores: one for pos and one for boardSide
-% we need those two for the alphaBeta search - so when it looks at a state it knows where it came from
-% and that way it can decide if it's max or min.
+% we need those two for the alphaBeta search - so when it looks at a state it knows where it came from.
 % next we have Plaer = whose turn it is in the game right now
 % so we get: _pos-_boardSide-List-Player
 % ---------------------------------------------------------------------
@@ -418,7 +421,7 @@ alphaBeta(Depth,_-_-State-Player,Alpha,Beta,GoodState,Val):-
 
 boundedBest(Depth,[State|StateList],Alpha,Beta,GoodState,GoodVal):-
   alphaBeta(Depth,State,Alpha,Beta,_,Val),%run alphaBeta on States list's head
-  goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal).%find the best in the list recursivly
+  goodEnough(Depth,StateList,Alpha,Beta,State,Val,GoodState,GoodVal).%find the best in the list's tail recursivly
 
 goodEnough(_,[],_,_,State,Val,State,Val):-!. % no moves - game ended - return current state
 
