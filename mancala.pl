@@ -51,20 +51,20 @@ cleanUp:-
 % ---------------------------------------------------------------------
 % starts with initializing 5 pockets for each player
 % then initializing the banks for both players.
-start:-
-  start(5),
+initBoard:-
+  initBoard(5),
   assert(pocket(bank,human,0)),
   assert(pocket(bank,cpu,0)),
   random_member(Player,[cpu,human]), % use SWI built-in predicate random_member
   assert(turn(Player)).  % to choose the player that play first
 
 % initializing the 5 pockets of each player in the board:
-start(-1):-!. % stop after 5 pockets for each player
-start(Pos):-
+initBoard(-1):-!. % stop after 5 pockets for each player
+initBoard(Pos):-
   assert(pocket(Pos,human,4)), % game starts with 4 stones
   assert(pocket(Pos,cpu,4)), % in each pocket for each player
   NextPos is Pos-1,
-  start(NextPos). % recursivly updating the next pocket
+  initBoard(NextPos). % recursivly updating the next pocket
 
 % ---------------------------------------------------------------------
 % checking if a specific pocket is empty:
@@ -487,7 +487,7 @@ mainGameLoop:-
 
 %This is the game mode for the automatic game:
 cpuVsCpuGame:-
-  start,%initialize the board
+  initBoard,%initialize the board
   nl,write("Game is being played, writing it to a file called 'automaticGame'..."),nl,
   tell(automaticGame),
   printBoard,
@@ -530,7 +530,7 @@ cpuVsCpuGameLoop:-
 %This is the game mode for the player vs cpu
 playerVsCpuGame:-
   chooseDifficulty,nl,
-  start,%initialize the board
+  initBoard,%initialize the board
   printBoard,
   playerVsCpuGameLoop. % start the game
 
@@ -623,7 +623,7 @@ printManual:-
 %  -It's showing the player how to gain an extra turn
 %  -It's showing the player how to caputre opponent's stones
 viewTutorial:-
-  start,
+  initBoard,
   write("This is your board:"),nl,
   printBoard,
   write("Your pockets are on the bottom, and your opponent's are on the top"),nl,
@@ -638,7 +638,7 @@ viewTutorial:-
   %next stage in the tutorial - how to capture opponent's stones
   write("Now let's teach you how to capture!"),nl,nl,
   cleanUp,
-  start,(turn(human);switchTurns),
+  initBoard,(turn(human);switchTurns),
   sleep(3),
   emptyCurrPocket(5,human,_),
   printBoard,
